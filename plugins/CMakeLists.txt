@@ -1,10 +1,12 @@
 function(dash_add_plugin type name)
-    add_library(${name} MODULE ${ARGN})
-    target_link_libraries(${name} PRIVATE dash_core)
-    set_target_properties(${name} PROPERTIES
+    set(target dash_plugin_${type}_${name})
+    add_library(${target} MODULE ${ARGN})
+    target_link_libraries(${target} PRIVATE dash_core)
+    set_target_properties(${target} PROPERTIES
+        OUTPUT_NAME ${name}
         LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/${DASH_PLUGIN_INSTALL_DIR}/${type}
         INSTALL_RPATH "$ORIGIN/../../..")
-    install(TARGETS ${name} LIBRARY DESTINATION ${DASH_PLUGIN_INSTALL_DIR}/${type})
+    install(TARGETS ${target} LIBRARY DESTINATION ${DASH_PLUGIN_INSTALL_DIR}/${type})
 endfunction()
 
 # Drop-in layout kept from upstream: every plugins/<type>/<name>/ directory

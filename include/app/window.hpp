@@ -60,12 +60,13 @@ class MainWindow : public QMainWindow {
    public:
     MainWindow(QRect geometry);
     void set_fullscreen(Page *page);
+    Arbiter &arbiter() { return this->arbiter_; }
 
    protected:
     void showEvent(QShowEvent *event) override;
 
    private:
-    Arbiter arbiter;
+    Arbiter arbiter_;
     QStackedWidget *stack;
 
     MainWindow *init(QRect geometry);

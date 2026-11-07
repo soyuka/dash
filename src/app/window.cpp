@@ -201,7 +201,7 @@ QWidget *Dash::power_control() const
 
 MainWindow::MainWindow(QRect geometry)
     : QMainWindow()
-    , arbiter(this->init(geometry))
+    , arbiter_(this->init(geometry))
     , stack(new QStackedWidget())
 {
     this->setAttribute(Qt::WA_TranslucentBackground, true);
@@ -212,18 +212,18 @@ MainWindow::MainWindow(QRect geometry)
     layout->setSpacing(0);
 
     layout->addWidget(this->stack);
-    layout->addWidget(this->arbiter.layout().fullscreen.toggler(1)->widget());
+    layout->addWidget(this->arbiter_.layout().fullscreen.toggler(1)->widget());
 
     this->setCentralWidget(frame);
 
-    auto dash = new Dash(this->arbiter);
+    auto dash = new Dash(this->arbiter_);
     this->stack->addWidget(dash);
     dash->init();
 
-    this->arbiter.system().brightness.set();
+    this->arbiter_.system().brightness.set();
 
-    if (this->arbiter.layout().fullscreen.on_start)
-        this->arbiter.set_fullscreen(true);
+    if (this->arbiter_.layout().fullscreen.on_start)
+        this->arbiter_.set_fullscreen(true);
 }
 
 MainWindow *MainWindow::init(QRect geometry)
@@ -238,7 +238,7 @@ MainWindow *MainWindow::init(QRect geometry)
 void MainWindow::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
-    this->arbiter.update();
+    this->arbiter_.update();
 }
 
 void MainWindow::set_fullscreen(Page *page)
