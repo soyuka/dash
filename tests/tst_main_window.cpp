@@ -2,6 +2,8 @@
 
 #include <QSettings>
 #include <QStandardPaths>
+#include <QQuickWidget>
+#include <QVideoWidget>
 #include <QtTest>
 
 #include "app/arbiter.hpp"
@@ -45,6 +47,16 @@ class MainWindowTest : public QObject {
             QCOMPARE(arbiter.layout().curr_page, page);
             QVERIFY(page->container()->isVisible());
         }
+    }
+
+    void renders_android_auto_in_the_widget_scene()
+    {
+        auto page = this->window->arbiter().layout().page(0)->container();
+        QVERIFY(page->findChildren<QVideoWidget *>().isEmpty());
+        auto video = page->findChild<QQuickWidget *>();
+        QVERIFY(video);
+        QVERIFY(video->rootObject());
+        QVERIFY(video->testAttribute(Qt::WA_TransparentForMouseEvents));
     }
 
     void loads_the_vehicle_plugin()
