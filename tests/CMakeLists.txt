@@ -10,3 +10,4 @@ function(dash_add_test name)
 endfunction()
 
 dash_add_test(tst_main_window)
+dash_add_test(tst_obd)
