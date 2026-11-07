@@ -174,10 +174,11 @@ class StretchViewTest : public QObject {
         QVERIFY(std::abs(recorder.touch.first().x() - local.x()) <= 1.0);
         QVERIFY(std::abs(recorder.touch.first().y() - local.y()) <= 1.0);
 
+        // Return is bound to an Android Auto action; an unbound key reaches the frame
         this->view->activateWindow();
         frame->setFocus();
-        QTest::keyClick(this->view.get(), Qt::Key_Return);
-        QTRY_COMPARE(recorder.keys, QList<int>({Qt::Key_Return}));
+        QTest::keyClick(this->view.get(), Qt::Key_H);
+        QTRY_COMPARE(recorder.keys, QList<int>({Qt::Key_H}));
         frame->removeEventFilter(&recorder);
     }
 
