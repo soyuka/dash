@@ -1,35 +1,37 @@
+#include <QCanBus>
+
+#include "DashLog.hpp"
+#include "app/config.hpp"
+
 #include "canbus/socketcanbus.hpp"
 
-SocketCANBus::SocketCANBus(QString canInterface)
+SocketCANBus::SocketCANBus(QString interface, QString plugin, QObject *parent)
 {
-    if (QCanBus::instance()->plugins().contains(QStringLiteral("socketcan"))) {
-        DASH_LOG(info) << "[SocketCANBus] 'socketcan' Available";
-        socketCANAvailable = true;
-        QString errorString;
-        bus = QCanBus::instance()->createDevice(
-            QStringLiteral("socketcan"), canInterface, &errorString);
-        if (!bus) {
-            DASH_LOG(error) <<"[SocketCANBus] Error creating CAN device, " << errorString.toStdString();
-        } else {
-            DASH_LOG(info) <<"[SocketCANBus] Connecting CAN interface "<<canInterface.toStdString();
-            bus->connectDevice();
-            connect(bus, &QCanBusDevice::framesReceived,
-                     this, &SocketCANBus::framesAvailable);
-        }
+    this->setParent(parent);
+
+    QString error;
+    this->bus.reset(QCanBus::instance()->createDevice(plugin, interface, &error));
+    if (!this->bus) {
+        DASH_LOG(error) << "[SocketCANBus] cannot create " << plugin.toStdString() << " device "
+                        << interface.toStdString() << ": " << error.toStdString();
+        return;
     }
+
+    connect(this->bus.get(), &QCanBusDevice::framesReceived, this, &SocketCANBus::dispatch_frames);
+    connect(this->bus.get(), &QCanBusDevice::errorOccurred, this, [this](QCanBusDevice::CanBusError) {
+        DASH_LOG(error) << "[SocketCANBus] " << this->bus->errorString().toStdString();
+    });
+
+    DASH_LOG(info) << "[SocketCANBus] connecting " << plugin.toStdString() << " interface " << interface.toStdString();
+    if (!this->bus->connectDevice())
+        DASH_LOG(error) << "[SocketCANBus] cannot connect " << interface.toStdString() << ": "
+                        << this->bus->errorString().toStdString();
 }
 
 SocketCANBus::~SocketCANBus()
 {
-    DASH_LOG(info) << "[SocketCANBus] Disconnecting and deleting bus";
-    if(bus->state() == QCanBusDevice::ConnectedState){
-        bus->disconnectDevice();
-    }
-}
-
-bool SocketCANBus::writeFrame(QCanBusFrame frame)
-{
-    return bus->writeFrame(frame);
+    if (this->bus && this->bus->state() == QCanBusDevice::ConnectedState)
+        this->bus->disconnectDevice();
 }
 
 SocketCANBus *SocketCANBus::get_instance()
@@ -38,42 +40,42 @@ SocketCANBus *SocketCANBus::get_instance()
     return &bus;
 }
 
-// QSerialBus readAllFrames introduced in 5.12 - Pi OS is stuck on 5.11, so implement our own
-QVector<QCanBusFrame> SocketCANBus::readAllFrames(int numFrames){
-    QVector<QCanBusFrame> frames = QVector<QCanBusFrame>();
-    for(int i = 0; i<numFrames; i++){
-        frames.append(bus->readFrame());
-    }
-    return frames;
+bool SocketCANBus::is_connected() const
+{
+    return this->bus && this->bus->state() == QCanBusDevice::ConnectedState;
 }
 
-void SocketCANBus::framesAvailable()
+bool SocketCANBus::writeFrame(QCanBusFrame frame)
 {
-    int numFrames = bus->framesAvailable();
-    if(numFrames>0){
-        QVector<QCanBusFrame> frames =  readAllFrames(numFrames);
-        for(int i = 0; i<frames.length(); i++){
-            QCanBusFrame frame = frames.at(i);
-            if (callbacks.find(frame.frameId()) != callbacks.end())
-            {
-                for(auto callback : callbacks[frame.frameId()]){
-                    callback(frame.payload());
-                }
-            }
-        }
-    }
-    
-} 
+    return this->is_connected() && this->bus->writeFrame(frame);
+}
 
+void SocketCANBus::dispatch_frames()
+{
+    for (const auto &frame : this->bus->readAllFrames()) {
+        if (!frame.isValid() || frame.frameType() != QCanBusFrame::DataFrame)
+            continue;
+        auto handlers = this->callbacks.find(frame.frameId());
+        if (handlers == this->callbacks.end())
+            continue;
+        for (const auto &callback : handlers->second)
+            callback(frame.payload());
+    }
+}
 
 void SocketCANBus::registerFrameHandler(int id, std::function<void(QByteArray)> callback)
 {
-    callbacks[id].push_back(callback);
+    auto frame_id = static_cast<quint32>(id);
+    this->callbacks[frame_id].push_back(std::move(callback));
+
+    bool extended = frame_id > 0x7FF;
     QCanBusDevice::Filter filter;
-    filter.frameId = id;
-    filter.frameIdMask = 0xFFF;
-    filter.format=QCanBusDevice::Filter::MatchBaseAndExtendedFormat;
-    filter.type = QCanBusFrame::InvalidFrame;
-    filterList.append(filter);
-    bus->setConfigurationParameter(QCanBusDevice::RawFilterKey, QVariant::fromValue(filterList));
+    filter.frameId = frame_id;
+    filter.frameIdMask = extended ? 0x1FFFFFFFu : 0x7FFu;
+    filter.format = extended ? QCanBusDevice::Filter::MatchExtendedFormat : QCanBusDevice::Filter::MatchBaseFormat;
+    filter.type = QCanBusFrame::DataFrame;
+    this->filters_.append(filter);
+
+    if (this->bus)
+        this->bus->setConfigurationParameter(QCanBusDevice::RawFilterKey, QVariant::fromValue(this->filters_));
 }
