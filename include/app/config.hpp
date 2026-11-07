@@ -7,7 +7,6 @@
 #include <QSettings>
 #include <QString>
 #include <QStringList>
-#include <QVideoFrame>
 #include <QWidget>
 
 /*
@@ -49,13 +48,6 @@ class Config : public QObject {
             this->settings.setValue("Pages/Media/Radio/plugin", this->radio_plugin);
     }
 
-    inline QString get_media_home() { return this->media_home; }
-    inline void set_media_home(QString media_home)
-    {
-        this->media_home = media_home;
-        this->settings.setValue("Pages/Media/Local/home", this->media_home);
-    }
-
     inline bool get_si_units() { return this->si_units; }
     inline void set_si_units(bool si_units)
     {
@@ -93,69 +85,6 @@ class Config : public QObject {
             this->settings.setValue("Pages/Vehicle/plugin", this->vehicle_plugin);
     }
 
-    inline QString get_cam_network_url() { return this->cam_network_url; }
-    inline void set_cam_network_url(QString network_url)
-    {
-        this->cam_network_url = network_url;
-        this->settings.setValue("Pages/Camera/stream_url", this->cam_network_url);
-    }
-
-    inline const QString& get_cam_local_device() { return this->cam_local_device; }
-    inline void set_cam_local_device(QString local_device)
-    {
-        this->cam_local_device = local_device;
-        this->settings.setValue("Pages/Camera/local_device", this->cam_local_device);
-    }
-
-    inline bool get_cam_is_network() { return this->cam_is_network; }
-    inline void set_cam_is_network(bool is_network)
-    {
-        this->cam_is_network = is_network;
-        this->settings.setValue("Pages/Camera/is_network", this->cam_is_network);
-    }
-
-    inline QVideoFrame::PixelFormat get_cam_local_format_override() { return this->cam_local_format_override; }
-    inline void set_cam_local_format_override(QVideoFrame::PixelFormat local_format)
-    {
-        this->cam_local_format_override = local_format;
-        this->settings.setValue("Pages/Camera/local_format_override", this->cam_local_format_override);
-    }
-
-    inline bool get_cam_autoconnect() { return this->cam_autoconnect; }
-    inline void set_cam_autoconnect(bool enabled)
-    {
-        this->cam_autoconnect = enabled;
-        this->settings.setValue("Pages/Camera/automatically_reconnect", this->cam_autoconnect);
-    }
-
-    inline int get_cam_autoconnect_time_secs() { return this->cam_autoconnect_time_secs; }
-    inline void set_cam_autoconnect_time_secs(int seconds)
-    {
-        this->cam_autoconnect_time_secs = seconds;
-        this->settings.setValue("Pages/Camera/auto_reconnect_time_secs", this->cam_autoconnect_time_secs);
-    }
-
-    inline bool get_cam_overlay() { return this->cam_overlay; }
-    inline void set_cam_overlay(bool enabled)
-    {
-        this->cam_overlay = enabled;
-        this->settings.setValue("Pages/Camera/Overlay/enabled", this->cam_overlay);
-    }
-
-    inline int get_cam_overlay_width() { return this->cam_overlay_width; }
-    inline void set_cam_overlay_width(int value)
-    {
-        this->cam_overlay_width = value;
-        this->settings.setValue("Pages/Camera/Overlay/width", this->cam_overlay_width);
-    }
-
-    inline int get_cam_overlay_height() { return this->cam_overlay_height; }
-    inline void set_cam_overlay_height(int value)
-    {
-        this->cam_overlay_height = value;
-        this->settings.setValue("Pages/Camera/Overlay/height", this->cam_overlay_height);
-    }
-
     inline bool get_show_aa_connected() { return this->show_aa_connected; }
     inline void set_show_aa_connected(bool enabled)
     {
@@ -184,27 +113,15 @@ class Config : public QObject {
     double radio_station;
     bool radio_muted;
     QString radio_plugin;
-    QString media_home;
     bool si_units;
     ICANBus::VehicleBusType vehicle_can_bus;
     QString vehicle_interface;
     QString vehicle_plugin;
-    QString cam_network_url;
-    QString cam_local_device;
-    bool cam_is_network;
-    QVideoFrame::PixelFormat cam_local_format_override;
-    bool cam_autoconnect;
-    int cam_autoconnect_time_secs;
-    bool cam_overlay;
-    int cam_overlay_width;
-    int cam_overlay_height;
     bool show_aa_connected;
     QStringList launcher_plugins;
 
    signals:
     void si_units_changed(bool si_units);
-    void cam_autoconnect_changed(bool enabled);
-    void cam_overlay_changed(bool enabled);
     void vehicle_can_bus_changed(ICANBus::VehicleBusType state);
     void vehicle_interface_changed(QString interface);
 };

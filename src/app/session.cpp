@@ -12,7 +12,6 @@
 #include <QTextStream>
 
 #include "app/arbiter.hpp"
-#include "app/pages/camera.hpp"
 #include "app/pages/vehicle.hpp"
 #include "app/pages/launcher.hpp"
 #include "app/pages/media.hpp"
@@ -121,7 +120,6 @@ Session::Layout::Layout(QSettings &settings, Arbiter &arbiter)
         this->openauto_page,
         new MediaPage(arbiter),
         new VehiclePage(arbiter),
-        new CameraPage(arbiter),
         new LauncherPage(arbiter),
         new SettingsPage(arbiter)
     };

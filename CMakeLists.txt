@@ -39,7 +39,6 @@ find_package(KF5BluezQt REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(rtaudio REQUIRED)
-find_package(taglib REQUIRED)
 find_package(aasdk REQUIRED)
 find_package(openauto REQUIRED)
 
@@ -113,7 +112,6 @@ target_include_directories(dash SYSTEM PRIVATE
     ${ILCLIENT_INCLUDE_DIRS}
     ${GST_INCLUDE_DIRS}
     ${QTGSTREAMER_INCLUDE_DIR}
-    ${TAGLIB_INCLUDE_DIRS}
     ${include_directory}
     )
 
@@ -148,7 +146,6 @@ target_link_libraries(dash
     ${Qt5QuickWidgets_LIBRARIES}
     ${QTGSTREAMER_QUICK_LIBRARIES}
     ${QTGSTREAMER_QUICK_LIBRARY}
-    ${TAGLIB_LIBRARIES}
     )
 
 install(TARGETS dash DESTINATION bin)

@@ -14,7 +14,6 @@ Main features of Dash include:
 *	Theming `Dark/Light mode` `Customizable RGB Accent Color`
 *	True Raspberry Pi 7” Official Touchscreen Brightness Control
 *	App-Launcher built in
-*	Camera Access `Streaming/Local` `Backup` `Dash`
 *	Keyboard Shortcuts `GPIO Triggerable`
 
 ![](docs/imgs/opendash-ui.gif)

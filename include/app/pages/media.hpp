@@ -2,7 +2,6 @@
 
 #include <QFileInfo>
 #include <QMap>
-#include <QMediaPlayer>
 #include <QPluginLoader>
 #include <QString>
 #include <QtWidgets>
@@ -59,26 +58,4 @@ class RadioPlayerTab : public QWidget {
     QWidget *tuner_widget();
     QWidget *controls_widget();
 
-};
-
-class LocalPlayerTab : public QWidget {
-    Q_OBJECT
-
-   public:
-    LocalPlayerTab(Arbiter &arbiter, QWidget *parent = nullptr);
-
-    static QString durationFmt(int total_ms);
-
-   private:
-    Arbiter &arbiter;
-
-    QWidget *playlist_widget();
-    QWidget *seek_widget();
-    QWidget *controls_widget();
-    void populate_dirs(QString path, QListWidget *dirs_widget);
-    void populate_tracks(QString path, QListWidget *tracks_widget);
-
-    Config *config;
-    QMediaPlayer *player;
-    QLabel *path_label;
 };
