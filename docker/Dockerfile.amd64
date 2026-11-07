@@ -1,0 +1,20 @@
+FROM debian:trixie
+
+ARG DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential cmake ninja-build pkgconf git ca-certificates file \
+        libboost-dev libboost-system-dev libboost-log-dev libboost-test-dev \
+        libprotobuf-dev protobuf-compiler \
+        libusb-1.0-0-dev libssl-dev \
+        libgmock-dev libgtest-dev \
+        qt6-base-dev qt6-base-dev-tools qt6-declarative-dev qt6-declarative-dev-tools \
+        qt6-multimedia-dev qt6-connectivity-dev qt6-serialbus-dev qt6-serialport-dev \
+        qt6-websockets-dev qt6-svg-dev qt6-wayland-dev qt6-wayland-dev-tools \
+        qt6-tools-dev-tools qt6-shadertools-dev \
+        libkf6bluezqt-dev \
+        libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
+        libgstreamer-plugins-bad1.0-dev \
+        librtaudio-dev libtag-dev libunwind-dev libxkbcommon-dev \
+    && rm -rf /var/lib/apt/lists/*

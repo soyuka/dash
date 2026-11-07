@@ -1,0 +1,23 @@
+FROM debian:trixie
+
+ARG DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
+
+RUN dpkg --add-architecture arm64 && apt-get update && apt-get install -y --no-install-recommends \
+        build-essential crossbuild-essential-arm64 cmake ninja-build pkgconf git ca-certificates file \
+        protobuf-compiler \
+        qt6-base-dev-tools qt6-declarative-dev-tools qt6-wayland-dev-tools \
+        qt6-tools-dev-tools qt6-shadertools-dev \
+        libboost-dev:arm64 libboost-system-dev:arm64 libboost-log-dev:arm64 libboost-test-dev:arm64 \
+        libprotobuf-dev:arm64 \
+        libusb-1.0-0-dev:arm64 libssl-dev:arm64 \
+        qt6-base-dev:arm64 qt6-declarative-dev:arm64 qt6-multimedia-dev:arm64 \
+        qt6-connectivity-dev:arm64 qt6-serialbus-dev:arm64 qt6-serialport-dev:arm64 \
+        qt6-websockets-dev:arm64 qt6-svg-dev:arm64 qt6-wayland-dev:arm64 \
+        libkf6bluezqt-dev:arm64 \
+        libglib2.0-dev:arm64 libgstreamer1.0-dev:arm64 libgstreamer-plugins-base1.0-dev:arm64 \
+        libgstreamer-plugins-bad1.0-dev:arm64 \
+        librtaudio-dev:arm64 libtag-dev:arm64 libunwind-dev:arm64 libxkbcommon-dev:arm64 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY toolchain-aarch64.cmake /opt/toolchain-aarch64.cmake
