@@ -98,5 +98,5 @@ void ButtonFullscreenToggler::mouseReleaseEvent(QMouseEvent *event)
 
 void ButtonFullscreenToggler::mouseMoveEvent(QMouseEvent *event)
 {
-    this->move(event->globalX() - this->p.x(), event->globalY() - this->p.y());
+    this->move(event->globalPosition().toPoint() - this->p);
 }

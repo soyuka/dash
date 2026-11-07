@@ -7,15 +7,13 @@
 #include <QPushButton>
 #include <QTimer>
 
-#include <QDebug>
-
 #include "app/arbiter.hpp"
 
 #include "app/action.hpp"
 
 #include "DashLog.hpp"
 
-const QRegExp GPIONotifier::GPIOX_REGEX("gpio\\d+");
+const QRegularExpression GPIONotifier::GPIOX_REGEX(QRegularExpression::anchoredPattern("gpio\\d+"));
 const QString GPIONotifier::GPIO_DIR("/sys/class/gpio");
 const QString GPIONotifier::GPIOX_DIR(GPIONotifier::GPIO_DIR + "/%1");
 const QString GPIONotifier::GPIOX_VALUE_PATH(GPIONotifier::GPIOX_DIR + "/value");
@@ -26,7 +24,7 @@ GPIONotifier::GPIONotifier()
     , watcher()
 {
     for (auto gpio : QDir(this->GPIO_DIR).entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-        if (this->GPIOX_REGEX.exactMatch(gpio) && QFile(this->GPIOX_ACTIVE_LOW_PATH.arg(gpio)).exists())
+        if (this->GPIOX_REGEX.match(gpio).hasMatch() && QFile(this->GPIOX_ACTIVE_LOW_PATH.arg(gpio)).exists())
             this->watcher.addPath(this->GPIOX_VALUE_PATH.arg(gpio));
     }
 
@@ -58,7 +56,7 @@ void ActionDialog::keyPressEvent(QKeyEvent *event)
     if (std::any_of(mod_keys.begin(), mod_keys.end(), [key](Qt::Key mod_key){ return (key == mod_key); }))
         return;
 
-    this->label->setText(QKeySequence(event->modifiers() + key).toString());
+    this->label->setText(QKeySequence(event->keyCombination()).toString());
 }
 
 void ActionDialog::showEvent(QShowEvent *event)
@@ -110,17 +108,11 @@ Action::Action(QString name, std::function<void(ActionState)> action, QWidget *p
                 QTimer::singleShot(300, [this]{ this->gpio.watcher.blockSignals(false); });
             }
             else {
-                QString debugStr;
-                QDebug stream(&debugStr);
-                stream << this->key_ << ": active low != value";
-                DASH_LOG(info) << "[Action] " << debugStr.toStdString(); // temp
+                DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": active low != value";
             }
         }
         else {
-            QString debugStr;
-            QDebug stream(&debugStr);
-            stream << this->key_ << ":" << this->gpio.value.fileName() << "is not open"; // temp
-            DASH_LOG(info) << "[Action] " << debugStr.toStdString();
+            DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": " << this->gpio.value.fileName().toStdString() << " is not open";
         }
     });
     connect(&this->shortcut, &QShortcut::activated, [action]{ action(ActionState::Triggered); });
@@ -181,10 +173,7 @@ void Action::set(QString key)
 
     this->key_ = key;
     if (this->key_.startsWith("gpio")) {
-        QString debugStr;
-        QDebug stream(&debugStr);
-        stream << "[Action] " << this->key_ << ": setting action as gpio"; // temp
-        DASH_LOG(info) << debugStr.toStdString();
+        DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": setting action as gpio";
         this->gpio.value.setFileName(GPIONotifier::GPIOX_VALUE_PATH.arg(this->key_));
         if (this->gpio.value.open(QIODevice::ReadOnly)) {
             QFile active_low(GPIONotifier::GPIOX_ACTIVE_LOW_PATH.arg(this->key_), this);
@@ -194,34 +183,22 @@ void Action::set(QString key)
                 this->gpio.watcher.addPath(this->gpio.value.fileName());
             }
             else {
-                QString debugStr;
-                QDebug stream(&debugStr);
-                stream << "[Action] " << this->key_ << ": failed to open" << active_low; // temp
-                DASH_LOG(info) << debugStr.toStdString();
+                DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": failed to open " << active_low.fileName().toStdString();
             }
         }
         else {
-            QString debugStr;
-            QDebug stream(&debugStr);
-            stream << "[Action]" << this->key_ << ": failed to open" << this->gpio.value.fileName(); // temp
-            DASH_LOG(info) << debugStr.toStdString();
+            DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": failed to open " << this->gpio.value.fileName().toStdString();
         }
     }
     else if (!this->key_.isNull()) {
-        QString debugStr;
-        QDebug stream(&debugStr);
-        stream << "[Action]" << this->key_ << ": setting action as key"; // temp
-        DASH_LOG(info) << debugStr.toStdString();
+        DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": setting action as key";
         // if + is present, it means sequence is multiple keys.
         // I'd have implemented this by looking at the .count() of the QKeySequence
         // but it doesn't consider modifiers (ctrl, shift, etc) to be a discrete key
         if(!this->key_.contains('+')) 
         {
-            QString debugStr;
-            QDebug stream(&debugStr);
-            stream << "[Action]" << this->key_ << ": single key sequence, setting via eventFilter";
-            DASH_LOG(info) << debugStr.toStdString();
-            actionEventFilter->eventFilterMap.insert(QKeySequence::fromString(this->key_)[0], this);
+            DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": single key sequence, setting via eventFilter";
+            actionEventFilter->eventFilterMap.insert(QKeySequence::fromString(this->key_)[0].key(), this);
         }
         else
         {

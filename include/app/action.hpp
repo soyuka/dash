@@ -6,12 +6,13 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QObject>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QShortcut>
 #include <QString>
 #include <QShowEvent>
 #include <QWidget>
-#include <bits/stdc++.h>
+#include <functional>
+#include <mutex>
 
 
 #include "app/widgets/dialog.hpp"
@@ -22,7 +23,7 @@ class GPIONotifier : public QObject {
     Q_OBJECT
 
    public:
-    static const QRegExp GPIOX_REGEX;
+    static const QRegularExpression GPIOX_REGEX;
     static const QString GPIO_DIR;
     static const QString GPIOX_DIR;
     static const QString GPIOX_VALUE_PATH;

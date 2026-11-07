@@ -1,151 +1,100 @@
-cmake_minimum_required(VERSION 3.7.0)
-project(dash CXX)
+cmake_minimum_required(VERSION 3.16)
+project(dash VERSION 0.2.0 LANGUAGES CXX)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
-set(base_directory ${CMAKE_CURRENT_SOURCE_DIR})
-set(resources_directory ${base_directory}/assets)
-set(sources_directory ${base_directory}/src)
-set(include_directory ${base_directory}/include)
-set(plugins_directory ${base_directory}/plugins)
-include(${base_directory}/cmake_modules/functions.cmake)
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${base_directory}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${base_directory}/bin)
-set(EXECUTABLE_OUTPUT_PATH ${base_directory}/bin)
-
-set(Boost_USE_STATIC_LIBS OFF)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
-
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake_modules/")
-SET(CMAKE_CXX_STANDARD 14)
-set(CMAKE_EXE_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} -rdynamic)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_INIT} -Wall -pedantic -fPIC")
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
-set(CMAKE_CXX_FLAGS_RELEASE "-g -O3")
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
-add_definitions(-DBOOST_ALL_DYN_LINK)
+option(DASH_TEST "Build the dash unit tests" OFF)
 
-find_package(Boost REQUIRED COMPONENTS system log OPTIONAL_COMPONENTS unit_test_framework)
-find_package(libusb-1.0 REQUIRED)
-find_package(Qt5 COMPONENTS Multimedia MultimediaWidgets Bluetooth Qml Quick QuickWidgets SerialBus SerialPort WebSockets DBus Xml Svg REQUIRED)
-find_package(KF5BluezQt REQUIRED)
-find_package(Protobuf REQUIRED)
-find_package(OpenSSL REQUIRED)
-find_package(rtaudio REQUIRED)
-find_package(aasdk REQUIRED)
-find_package(openauto REQUIRED)
+set(DASH_PLUGIN_INSTALL_DIR lib/dash/plugins)
 
-if(RPI_BUILD AND NOT GST_BUILD)
-    add_definitions(-DUSE_OMX -DOMX_SKIP64BIT)
-    set(BCM_HOST_LIBRARIES "/opt/vc/lib/libbcm_host.so")
-    set(BCM_HOST_INCLUDE_DIRS "/opt/vc/include")
-    set(ILCLIENT_INCLUDE_DIRS "/opt/vc/src/hello_pi/libs/ilclient")
-    set(ILCLIENT_LIBRARIES "/opt/vc/src/hello_pi/libs/ilclient/libilclient.a;/opt/vc/lib/libvcos.so;/opt/vc/lib/libvcilcs.a;/opt/vc/lib/libvchiq_arm.so")
-endif(RPI_BUILD AND NOT GST_BUILD)
-if(GST_BUILD)
-    find_package(Qt5GStreamer)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(GST REQUIRED
-        gstreamer-1.0>=1.4
-        gstreamer-sdp-1.0>=1.4
-        gstreamer-video-1.0>=1.4
-        gstreamer-app-1.0>=1.4)
-    add_definitions(-DUSE_GST)
-    if(RPI_BUILD)
-        add_definitions(-DRPI)
-        include(${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/functions.cmake)
-        findRpiRevision( RPI_REVISION )
-        # https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
-        # Decodes the 'Type' from revision code
-        math(EXPR RPI_MODEL "(0x${RPI_REVISION}>>4)&0xFF")
-        message( "-- Raspberry Pi Model: ${RPI_MODEL}" )
-        # Type 17 (0x11) is the RPI 4B
-        if(RPI_MODEL EQUAL 17)
-            message("Raspberry Pi 4 Found")
-            add_definitions(-DPI4)
-        endif(RPI_MODEL EQUAL 17)
-    endif(RPI_BUILD)
-endif(GST_BUILD)
-message(INFO "${GST_LIBRARIES}")
+# The build tree mirrors the install tree so that the binaries find the
+# plugins (bin/../lib/dash/plugins) without being installed.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 
-link_directories(${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 
-file(GLOB_RECURSE source_files ${sources_directory}/*.cpp ${include_directory}/*.hpp ${resources_directory}/*.qrc)
+find_package(Qt6 6.4 REQUIRED COMPONENTS
+    Core Gui Widgets Network DBus Xml Svg
+    SerialBus SerialPort WebSockets Bluetooth
+    Multimedia MultimediaWidgets)
+find_package(KF6BluezQt REQUIRED)
+find_package(openauto 2 REQUIRED)
+
+include(cmake_modules/gitversion.cmake)
+
+# AUTOMOC only finds Q_OBJECT headers it is given; they live apart from the sources.
+file(GLOB_RECURSE dash_headers CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/include/*.hpp)
+
+add_library(dash_core SHARED
+    ${dash_headers}
+    assets/resources.qrc
+    src/app/AAHandler.cpp
+    src/app/action.cpp
+    src/app/arbiter.cpp
+    src/app/config.cpp
+    src/app/graphics/dynamic_svg.cpp
+    src/app/pages/launcher.cpp
+    src/app/pages/media.cpp
+    src/app/pages/openauto.cpp
+    src/app/pages/page.cpp
+    src/app/pages/settings.cpp
+    src/app/pages/vehicle.cpp
+    src/app/quick_views/combo.cpp
+    src/app/quick_views/quick_view.cpp
+    src/app/services/bluetooth.cpp
+    src/app/services/clock.cpp
+    src/app/services/server.cpp
+    src/app/session.cpp
+    src/app/utilities/icon_engine.cpp
+    src/app/widgets/climate.cpp
+    src/app/widgets/climate_state.cpp
+    src/app/widgets/color_picker.cpp
+    src/app/widgets/dialog.cpp
+    src/app/widgets/fullscreen_toggler.cpp
+    src/app/widgets/progress.cpp
+    src/app/widgets/selector.cpp
+    src/app/widgets/step_meter.cpp
+    src/app/widgets/switch.cpp
+    src/app/widgets/tuner.cpp
+    src/app/widgets/vehicle.cpp
+    src/app/widgets/vehicle_state.cpp
+    src/app/window.cpp
+    src/canbus/elm327.cpp
+    src/canbus/socketcanbus.cpp
+    src/obd/command.cpp
+)
+target_include_directories(dash_core PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_BINARY_DIR}/generated)
+target_compile_options(dash_core PRIVATE -Wall)
+target_link_libraries(dash_core PUBLIC
+    openauto::openauto
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::DBus Qt6::Xml Qt6::Svg
+    Qt6::SerialBus Qt6::SerialPort Qt6::WebSockets Qt6::Bluetooth
+    Qt6::Multimedia Qt6::MultimediaWidgets
+    KF6::BluezQt)
+set_target_properties(dash_core PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR})
+
+add_executable(dash src/dash.cpp)
+target_link_libraries(dash PRIVATE dash_core)
 
 add_subdirectory(plugins)
 
-add_executable(dash ${source_files})
+install(TARGETS dash_core LIBRARY DESTINATION lib)
+install(TARGETS dash RUNTIME DESTINATION bin)
 
-include(${base_directory}/cmake_modules/gitversion.cmake)
-
-target_include_directories(dash PRIVATE
-    ${CMAKE_CURRENT_BINARY_DIR}
-    )
-
-target_include_directories(dash SYSTEM PRIVATE
-    ${Qt5Svg_INCLUDE_DIRS}
-    ${Qt5Xml_INCLUDE_DIRS}
-    ${Qt5WebSockets_INCLUDE_DIRS}
-    ${Qt5DBus_INCLUDE_DIRS}
-    ${Qt5SerialBus_INCLUDE_DIRS}
-    ${Qt5SerialPort_INCLUDE_DIRS}
-    ${Qt5Multimedia_INCLUDE_DIRS}
-    ${Qt5MultimediaWidgets_INCLUDE_DIRS}
-    ${Qt5Widgets_INCLUDE_DIRS}
-    ${Qt5Bluetooth_INCLUDE_DIRS}
-    ${Boost_INCLUDE_DIRS}
-    ${LIBUSB_1_INCLUDE_DIRS}
-    ${PROTOBUF_INCLUDE_DIR}
-    ${OPENSSL_INCLUDE_DIR}
-    ${RTAUDIO_INCLUDE_DIRS}
-    ${AASDK_PROTO_INCLUDE_DIRS}
-    ${AASDK_INCLUDE_DIRS}
-    ${OPENAUTO_INCLUDE_DIRS}
-    ${BCM_HOST_INCLUDE_DIRS}
-    ${ILCLIENT_INCLUDE_DIRS}
-    ${GST_INCLUDE_DIRS}
-    ${QTGSTREAMER_INCLUDE_DIR}
-    ${include_directory}
-    )
-
-target_link_libraries(dash
-    aasdk_proto
-    aasdk
-    openauto
-    ${Boost_LIBRARIES}
-    ${Qt5Svg_LIBRARIES}
-    ${Qt5Xml_LIBRARIES}
-    ${Qt5DBus_LIBRARIES}
-    ${Qt5WebSockets_LIBRARIES}
-    ${Qt5SerialBus_LIBRARIES}
-    ${Qt5SerialPort_LIBRARIES}
-    ${Qt5Multimedia_LIBRARIES}
-    ${Qt5MultimediaWidgets_LIBRARIES}
-    ${Qt5Bluetooth_LIBRARIES}
-    KF5::BluezQt
-    ${LIBUSB_1_LIBRARIES}
-    ${PROTOBUF_LIBRARIES}
-    ${BCM_HOST_LIBRARIES}
-    ${ILCLIENT_LIBRARIES}
-    ${WINSOCK2_LIBRARIES}
-    ${RTAUDIO_LIBRARIES}
-    ${GST_LIBRARIES}
-    ${QTGLIB_LIBRARY}
-    ${QTGLIB_LIBRARIES}
-    ${QTGSTREAMER_LIBRARY}
-    ${QTGSTREAMER_LIBRARIES}
-    ${QTGSTREAMER_UI_LIBRARY}
-    ${QTGSTREAMER_UI_LIBRARIES}
-    ${Qt5QuickWidgets_LIBRARIES}
-    ${QTGSTREAMER_QUICK_LIBRARIES}
-    ${QTGSTREAMER_QUICK_LIBRARY}
-    )
-
-install(TARGETS dash DESTINATION bin)
+if(DASH_TEST)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

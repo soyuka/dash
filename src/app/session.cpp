@@ -28,6 +28,7 @@ QDir Session::plugin_dir(QString plugin)
     QDir plugin_dir(QCoreApplication::applicationDirPath());
     plugin_dir.cdUp();
     plugin_dir.cd("lib");
+    plugin_dir.cd("dash");
     plugin_dir.cd("plugins");
     plugin_dir.cd(plugin);
 
@@ -154,9 +155,6 @@ Page *Session::Layout::next_enabled_page(Page *page) const
     return this->page(id);
 }
 
-const char *Session::System::VOLUME_CMD = "amixer set Master %1% --quiet";
-const char *Session::System::SHUTDOWN_CMD = "sudo shutdown -h now";
-const char *Session::System::REBOOT_CMD = "sudo shutdown -r now";
 
 const char *Session::System::Brightness::AUTO_PLUGIN = "auto";
 
@@ -233,9 +231,19 @@ Session::System::System(QSettings &settings, Arbiter &arbiter)
 
 void Session::System::set_volume() const
 {
-    auto process = new QProcess();
-    process->start(QString(VOLUME_CMD).arg(this->volume));
-    process->waitForFinished();
+    QProcess::startDetached("wpctl", {"set-volume", "@DEFAULT_AUDIO_SINK@", QString("%1%").arg(this->volume)});
+}
+
+void Session::System::reboot(QSettings &settings)
+{
+    settings.sync();
+    QProcess::startDetached("systemctl", {"reboot"});
+}
+
+void Session::System::shutdown(QSettings &settings)
+{
+    settings.sync();
+    QProcess::startDetached("systemctl", {"poweroff"});
 }
 
 QFrame *Session::Forge::br(bool vertical)
@@ -333,7 +341,7 @@ QWidget *Session::Forge::brightness_slider(bool buttons) const
         layout->addWidget(brighten_button);
     }
 
-    layout->insertWidget(1, slider, 4);
+    layout->insertWidget(buttons ? 1 : 0, slider, 4);
 
     return widget;
 }
@@ -367,7 +375,7 @@ QWidget *Session::Forge::volume_slider(bool buttons) const
         layout->addWidget(raise_button);
     }
 
-    layout->insertWidget(1, slider, 4);
+    layout->insertWidget(buttons ? 1 : 0, slider, 4);
 
     return widget;
 }

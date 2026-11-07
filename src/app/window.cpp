@@ -53,11 +53,11 @@ Dash::Dash(Arbiter &arbiter)
     layout->addLayout(this->rail.layout);
     layout->addLayout(this->body.layout);
 
-    connect(&this->rail.group, QOverload<int>::of(&QButtonGroup::buttonPressed), [this](int id){
+    connect(&this->rail.group, &QButtonGroup::idPressed, [this](int id){
         this->arbiter.set_curr_page(id);
         this->rail.timer.start();
     });
-    connect(&this->rail.group, QOverload<int>::of(&QButtonGroup::buttonReleased), [this](int id){
+    connect(&this->rail.group, &QButtonGroup::idReleased, [this](int){
         if (this->rail.timer.hasExpired(1000))
             this->arbiter.set_fullscreen(true);
     });
@@ -184,9 +184,7 @@ QWidget *Dash::power_control() const
     restart->setFlat(true);
     this->arbiter.forge().iconize("refresh", restart, 36);
     connect(restart, &QPushButton::clicked, [this]{
-        this->arbiter.settings().sync();
-        sync();
-        system(Session::System::REBOOT_CMD);
+        Session::System::reboot(this->arbiter.settings());
     });
     layout->addWidget(restart);
 
@@ -194,9 +192,7 @@ QWidget *Dash::power_control() const
     power_off->setFlat(true);
     this->arbiter.forge().iconize("power_settings_new", power_off, 36);
     connect(power_off, &QPushButton::clicked, [this]{
-        this->arbiter.settings().sync();
-        sync();
-        system(Session::System::SHUTDOWN_CMD);
+        Session::System::shutdown(this->arbiter.settings());
     });
     layout->addWidget(power_off);
 

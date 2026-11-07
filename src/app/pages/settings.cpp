@@ -237,16 +237,12 @@ QWidget *MainSettingsTab::controls_widget()
     layout->addWidget(Session::Forge::br());
     auto reboot_button = new QPushButton("reboot");
     connect(reboot_button, &QPushButton::clicked, [this]{
-        this->arbiter.settings().sync();
-        sync();
-        system(Session::System::REBOOT_CMD);
+        Session::System::reboot(this->arbiter.settings());
     });
     layout->addWidget(reboot_button);
     auto shut_down_button = new QPushButton("shut down");
     connect(shut_down_button, &QPushButton::clicked, [this]{
-        this->arbiter.settings().sync();
-        sync();
-        system(Session::System::SHUTDOWN_CMD);
+        Session::System::shutdown(this->arbiter.settings());
     });
     layout->addWidget(shut_down_button);
 

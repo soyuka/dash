@@ -238,9 +238,10 @@ void Arbiter::set_cursor(bool enabled)
 
 void Arbiter::set_action(Action *action, QString key)
 {
-    auto id = QString::number(this->core().action_id(action));
-    if (id < 0)
+    auto idx = this->core().action_id(action);
+    if (idx < 0)
         return;
+    auto id = QString::number(idx);
 
     action->set(key);
     this->settings().beginGroup("Core");

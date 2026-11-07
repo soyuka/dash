@@ -8,7 +8,7 @@ elm327::elm327(QString canInterface, bool bluetooth)
         btSocket = new QBluetoothSocket(QBluetoothServiceInfo::RfcommProtocol);
         QObject::connect(btSocket, &QBluetoothSocket::connected, this, &elm327::btConnected);
         QObject::connect(btSocket, &QBluetoothSocket::stateChanged, this, &elm327::socketChanged);
-        btSocket->connectToService(QBluetoothAddress(canInterface), QBluetoothUuid(QString("00001101-0000-1000-8000-00805F9B34FB")), QIODevice::ReadWrite);
+        btSocket->connectToService(QBluetoothAddress(canInterface), QBluetoothUuid(QBluetoothUuid::ServiceClassUuid::SerialPort), QIODevice::ReadWrite);
         bluetooth_watchdog = new QTimer(this);
     }
     else{
@@ -46,16 +46,16 @@ void elm327::btConnected()
 void elm327::socketChanged(QBluetoothSocket::SocketState state)
 {
     switch(state){
-        case(QBluetoothSocket::UnconnectedState):
+        case(QBluetoothSocket::SocketState::UnconnectedState):
             DASH_LOG(info)<<"[ElM327][Bluetooth] Unconnected";
             break;
-        case(QBluetoothSocket::ConnectingState):
+        case(QBluetoothSocket::SocketState::ConnectingState):
             DASH_LOG(info)<<"[ElM327][Bluetooth] Connecting";
             break;
-        case(QBluetoothSocket::ConnectedState):
+        case(QBluetoothSocket::SocketState::ConnectedState):
             DASH_LOG(info)<<"[ElM327][Bluetooth] Connected";
             break;
-        case(QBluetoothSocket::ServiceLookupState):
+        case(QBluetoothSocket::SocketState::ServiceLookupState):
             DASH_LOG(info)<<"[ElM327][Bluetooth] Looking up Services";
             break;
         default:

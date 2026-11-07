@@ -34,7 +34,6 @@ class OpenAutoWorker : public QObject {
     ~OpenAutoWorker();
 
     inline void start() { this->app->waitForDevice(true); }
-    inline void set_opacity(unsigned int alpha) { this->service_factory.setOpacity(alpha); }
     inline void update_size() { this->service_factory.resize(); }
     inline void send_key_event(QKeyEvent *event) { this->service_factory.sendKeyEvent(event); }
    private:
@@ -64,7 +63,7 @@ class OpenAutoFrame : public QWidget {
     OpenAutoFrame(QWidget *parent);
 
    protected:
-    inline void enterEvent(QEvent *) { this->setFocus(); }
+    void enterEvent(QEnterEvent *) override { this->setFocus(); }
 
    signals:
     void toggle(bool enable);

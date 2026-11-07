@@ -1,8 +1,8 @@
 # Directories #
 ###############
-/bin
 /build
-/lib
+/_build
+/_stage
 /nbproject
 /cmake-build-debug
 
@@ -60,7 +60,6 @@ CMakeFiles/
 CMakeCache.txt
 Makefile
 *_autogen/
-gitversion.h
 openauto.ini
 
 # Plugins #

@@ -109,9 +109,8 @@ class Session {
     };
 
     struct System {
-        static const char *VOLUME_CMD;
-        static const char *SHUTDOWN_CMD;
-        static const char *REBOOT_CMD;
+        static void reboot(QSettings &settings);
+        static void shutdown(QSettings &settings);
 
         struct Brightness {
             static const char *AUTO_PLUGIN;
