@@ -5,13 +5,22 @@
 #include "app/window.hpp"
 #include "DashLog.hpp"
 
-OpenAutoWorker::OpenAutoWorker(std::function<void(bool)> callback, bool night_mode, QWidget *frame, Arbiter &arbiter)
-    : QObject(qApp),
+libusb_context *OpenAutoWorker::init_usb_context()
+{
+    libusb_context *context = nullptr;
+    if (int err = libusb_init(&context); err != LIBUSB_SUCCESS)
+        throw std::runtime_error(std::string("libusb_init failed: ") + libusb_error_name(err));
+    return context;
+}
+
+OpenAutoWorker::OpenAutoWorker(std::function<void(bool)> callback, bool night_mode, QWidget *frame, Arbiter &arbiter, QObject *parent)
+    : QObject(parent),
+      usb_context(init_usb_context()),
       io_service(),
       work(io_service),
       configuration(Config::get_instance()->openauto_config),
       tcp_wrapper(),
-      usb_wrapper((libusb_init(&usb_context), usb_context)),
+      usb_wrapper(usb_context),
       query_factory(usb_wrapper, io_service),
       query_chain_factory(usb_wrapper, io_service, query_factory),
       service_factory(io_service, configuration, frame, callback, night_mode),
@@ -34,8 +43,15 @@ OpenAutoWorker::OpenAutoWorker(std::function<void(bool)> callback, bool night_mo
 
 OpenAutoWorker::~OpenAutoWorker()
 {
-    std::for_each(this->thread_pool.begin(), this->thread_pool.end(),
-                  std::bind(&std::thread::join, std::placeholders::_1));
+    this->app->stop();
+    this->io_service.stop();
+    for (auto &thread : this->io_threads)
+        thread.join();
+    // the USB threads block in libusb for up to the event timeout unless woken
+    for (auto &thread : this->usb_threads) {
+        libusb_interrupt_event_handler(this->usb_context);
+        thread.join();
+    }
     libusb_exit(this->usb_context);
 }
 
@@ -47,20 +63,16 @@ void OpenAutoWorker::create_usb_workers()
             libusb_handle_events_timeout_completed(this->usb_context, &event_timeout, nullptr);
     };
 
-    this->thread_pool.emplace_back(worker);
-    this->thread_pool.emplace_back(worker);
-    this->thread_pool.emplace_back(worker);
-    this->thread_pool.emplace_back(worker);
+    for (int i = 0; i < 4; i++)
+        this->usb_threads.emplace_back(worker);
 }
 
 void OpenAutoWorker::create_io_service_workers()
 {
     std::function<void()> worker = [this]() { this->io_service.run(); };
 
-    this->thread_pool.emplace_back(worker);
-    this->thread_pool.emplace_back(worker);
-    this->thread_pool.emplace_back(worker);
-    this->thread_pool.emplace_back(worker);
+    for (int i = 0; i < 4; i++)
+        this->io_threads.emplace_back(worker);
 }
 
 OpenAutoFrame::OpenAutoFrame(QWidget *parent) : QWidget(parent)
@@ -419,10 +431,16 @@ void OpenAutoPage::init()
 
     this->frame = new OpenAutoFrame(this);
 
-    std::function<void(bool)> callback = [frame = this->frame](bool active) { frame->toggle(active); };
-    this->worker = new OpenAutoWorker(callback, this->arbiter.theme().mode == Session::Theme::Dark, frame, this->arbiter);
+    std::function<void(bool)> callback = [frame = this->frame](bool active) { emit frame->toggle(active); };
+    try {
+        this->worker = new OpenAutoWorker(callback, this->arbiter.theme().mode == Session::Theme::Dark, frame, this->arbiter, this);
+    }
+    catch (const std::exception &e) {
+        DASH_LOG(error) << "[OpenAutoPage] Android Auto unavailable: " << e.what();
+    }
 
-    connect(this->frame, &OpenAutoFrame::toggle, [this](bool enable){
+    // the callback fires on openauto's io threads
+    connect(this->frame, &OpenAutoFrame::toggle, this, [this](bool enable){
         this->setCurrentIndex(enable ? 1 : 0);
 
         if (Config::get_instance()->get_show_aa_connected()) {
@@ -447,8 +465,10 @@ void OpenAutoPage::init()
 void OpenAutoPage::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
-    this->frame->resize(this->size());
-    this->worker->update_size();
+    if (this->frame)
+        this->frame->resize(this->size());
+    if (this->worker)
+        this->worker->update_size();
 }
 
 QWidget *OpenAutoPage::connect_msg()

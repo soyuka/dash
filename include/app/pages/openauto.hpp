@@ -30,7 +30,7 @@ class OpenAutoWorker : public QObject {
     Q_OBJECT
 
    public:
-    OpenAutoWorker(std::function<void(bool)> callback, bool night_mode, QWidget *frame, Arbiter &arbiter);
+    OpenAutoWorker(std::function<void(bool)> callback, bool night_mode, QWidget *frame, Arbiter &arbiter, QObject *parent);
     ~OpenAutoWorker();
 
     inline void start() { this->app->waitForDevice(true); }
@@ -39,6 +39,8 @@ class OpenAutoWorker : public QObject {
    private:
     void create_usb_workers();
     void create_io_service_workers();
+
+    static libusb_context *init_usb_context();
 
     libusb_context *usb_context;
     boost::asio::io_service io_service;
@@ -53,7 +55,8 @@ class OpenAutoWorker : public QObject {
     std::shared_ptr<aasdk::usb::USBHub> usb_hub;
     std::shared_ptr<aasdk::usb::ConnectedAccessoriesEnumerator> connected_accessories_enumerator;
     std::shared_ptr<openauto::App> app;
-    std::vector<std::thread> thread_pool;
+    std::vector<std::thread> usb_threads;
+    std::vector<std::thread> io_threads;
 };
 
 class OpenAutoFrame : public QWidget {
@@ -109,8 +112,8 @@ class OpenAutoPage : public QStackedWidget, public Page {
 
     QWidget *connect_msg();
 
-    Config *config;
-    OpenAutoFrame *frame;
-    OpenAutoWorker *worker;
+    Config *config = nullptr;
+    OpenAutoFrame *frame = nullptr;
+    OpenAutoWorker *worker = nullptr;
     const QString connected_icon_name;
 };

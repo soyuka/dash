@@ -24,7 +24,7 @@
 #include "app/services/bluetooth.hpp"
 
 Bluetooth::Bluetooth(Arbiter &arbiter)
-    : QObject(qApp)
+    : QObject()
 {
     DASH_LOG(info) << "[Bluetooth] Init";
 
