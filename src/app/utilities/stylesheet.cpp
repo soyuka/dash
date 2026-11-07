@@ -6,16 +6,18 @@
 
 QString scale_stylesheet(QString stylesheet, double scale)
 {
-    QRegularExpression regex(" (-?\\d+)px");
+    static const QRegularExpression length(" (-?\\d+)px");
 
-    auto it = regex.globalMatch(stylesheet);
+    QString scaled;
+    qsizetype last = 0;
+    auto it = length.globalMatch(stylesheet);
     while (it.hasNext()) {
         auto match = it.next();
-        if (match.hasMatch()) {
-            int scaled_px = std::ceil(match.captured(1).toInt() * scale);
-            stylesheet.replace(match.captured(), QString("%1px").arg(scaled_px));
-        }
+        scaled += QStringView(stylesheet).mid(last, match.capturedStart(1) - last);
+        scaled += QString::number(static_cast<int>(std::ceil(match.captured(1).toInt() * scale)));
+        last = match.capturedEnd(1);
     }
+    scaled += QStringView(stylesheet).mid(last);
 
-    return stylesheet;
+    return scaled;
 }
