@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QQuickWidget>
+#include <QVideoSink>
 #include <QtWidgets>
 #include <thread>
 
@@ -35,6 +37,7 @@ class OpenAutoWorker : public QObject {
 
     inline void start() { this->app->waitForDevice(true); }
     inline void update_size() { this->service_factory.resize(); }
+    inline void set_video_sink(QVideoSink *sink) { this->service_factory.setVideoSink(sink); }
     inline void send_key_event(QKeyEvent *event) { this->service_factory.sendKeyEvent(event); }
    private:
     void create_usb_workers();
@@ -64,9 +67,13 @@ class OpenAutoFrame : public QWidget {
 
    public:
     OpenAutoFrame(QWidget *parent);
+    QVideoSink *video_sink() const;
 
    protected:
     void enterEvent(QEnterEvent *) override { this->setFocus(); }
+
+   private:
+    QQuickWidget *video;
 
    signals:
     void toggle(bool enable);

@@ -25,7 +25,7 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib")
 find_package(Qt6 6.4 REQUIRED COMPONENTS
     Core Gui Widgets Network DBus Xml Svg
     SerialBus SerialPort WebSockets Bluetooth
-    Multimedia MultimediaWidgets)
+    Multimedia MultimediaWidgets Quick QuickWidgets)
 find_package(KF6BluezQt REQUIRED)
 find_package(openauto 2 REQUIRED)
 
@@ -82,7 +82,7 @@ target_link_libraries(dash_core PUBLIC
     openauto::openauto
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::DBus Qt6::Xml Qt6::Svg
     Qt6::SerialBus Qt6::SerialPort Qt6::WebSockets Qt6::Bluetooth
-    Qt6::Multimedia Qt6::MultimediaWidgets
+    Qt6::Multimedia Qt6::MultimediaWidgets Qt6::Quick Qt6::QuickWidgets
     KF6::BluezQt)
 set_target_properties(dash_core PROPERTIES
     VERSION ${PROJECT_VERSION}

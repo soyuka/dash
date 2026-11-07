@@ -19,4 +19,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         librtaudio-dev libtag-dev libunwind-dev libxkbcommon-dev \
         gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
         gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+        qml6-module-qtquick qml6-module-qtmultimedia \
     && rm -rf /var/lib/apt/lists/*

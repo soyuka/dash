@@ -1,3 +1,5 @@
+#include <QQuickItem>
+
 #include "app/pages/openauto.hpp"
 
 #include "app/config.hpp"
@@ -75,9 +77,32 @@ void OpenAutoWorker::create_io_service_workers()
         this->io_threads.emplace_back(worker);
 }
 
-OpenAutoFrame::OpenAutoFrame(QWidget *parent) : QWidget(parent)
+OpenAutoFrame::OpenAutoFrame(QWidget *parent)
+    : QWidget(parent)
+    , video(new QQuickWidget(this))
 {
     this->setAttribute(Qt::WA_AcceptTouchEvents);
+
+    // Projection is drawn by Qt Quick inside the widget scene rather than by
+    // openauto's QVideoWidget, a native subsurface that overlays (dialogs,
+    // fullscreen button) cannot cover. Input goes to this frame, where
+    // openauto filters it.
+    this->video->setAttribute(Qt::WA_TransparentForMouseEvents);
+    this->video->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    this->video->setClearColor(Qt::black);
+    this->video->setSource(QUrl("qrc:/aa_video.qml"));
+    for (const auto &error : this->video->errors())
+        DASH_LOG(error) << "[OpenAutoFrame] " << error.toString().toStdString();
+
+    auto layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->addWidget(this->video);
+}
+
+QVideoSink *OpenAutoFrame::video_sink() const
+{
+    auto root = this->video->rootObject();
+    return root ? root->property("videoSink").value<QVideoSink *>() : nullptr;
 }
 
 OpenAutoPage::Settings::Settings(Arbiter &arbiter, QWidget *parent)
@@ -434,6 +459,10 @@ void OpenAutoPage::init()
     std::function<void(bool)> callback = [frame = this->frame](bool active) { emit frame->toggle(active); };
     try {
         this->worker = new OpenAutoWorker(callback, this->arbiter.theme().mode == Session::Theme::Dark, frame, this->arbiter, this);
+        if (auto sink = this->frame->video_sink())
+            this->worker->set_video_sink(sink);
+        else
+            DASH_LOG(warning) << "[OpenAutoPage] no Qt Quick video output, falling back to openauto's video widget";
     }
     catch (const std::exception &e) {
         DASH_LOG(error) << "[OpenAutoPage] Android Auto unavailable: " << e.what();
