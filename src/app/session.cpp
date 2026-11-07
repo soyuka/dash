@@ -18,6 +18,7 @@
 #include "app/pages/settings.hpp"
 #include "app/quick_views/combo.hpp"
 #include "app/utilities/icon_engine.hpp"
+#include "app/utilities/stylesheet.hpp"
 #include "plugins/brightness_plugin.hpp"
 #include "aasdk_proto/ButtonCodeEnum.pb.h"
 
@@ -464,19 +465,7 @@ Session::Core::Core(QSettings &settings, Arbiter &arbiter)
 
 QString Session::Core::stylesheet(Theme::Mode mode, float scale) const
 {
-    QRegularExpression regex(" (-?\\d+)px");
-
-    auto stylesheet = this->stylesheet(mode);
-    auto it = regex.globalMatch(stylesheet);
-    while (it.hasNext()) {
-        auto match = it.next();
-        if (match.hasMatch()) {
-            int scaled_px = std::ceil(match.captured(1).toInt() * scale);
-            stylesheet.replace(match.captured(), QString("%1px").arg(scaled_px));
-        }
-    }
-
-    return stylesheet;
+    return scale_stylesheet(this->stylesheet(mode), scale);
 }
 
 void Session::Core::set_cursor() const

@@ -55,6 +55,7 @@ add_library(dash_core SHARED
     src/app/services/server.cpp
     src/app/session.cpp
     src/app/utilities/icon_engine.cpp
+    src/app/utilities/stylesheet.cpp
     src/app/widgets/climate.cpp
     src/app/widgets/climate_state.cpp
     src/app/widgets/color_picker.cpp
