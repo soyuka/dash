@@ -113,10 +113,10 @@ Session::Layout::Fullscreen::Fullscreen(QSettings &settings, Arbiter &arbiter)
 Session::Layout::Layout(QSettings &settings, Arbiter &arbiter)
     : scale(settings.value("Layout/scale", 1.0).toDouble())
     , status_bar(settings.value("Layout/status_bar", false).toBool())
+    , fullscreen(settings, arbiter)
     , control_bar(settings, arbiter)
     , openauto_page(new OpenAutoPage(arbiter))
     , curr_page(nullptr)
-    , fullscreen(settings, arbiter)
 {
     this->pages_ = {
         this->openauto_page,
@@ -164,7 +164,7 @@ Session::System::Brightness::Brightness(QSettings &settings)
     , value(settings.value("System/Brightness/value", 255).toUInt())
     , loader_()
 {
-    for (const auto file : Session::plugin_dir("brightness").entryInfoList(QDir::Files)) {
+    for (const auto &file : Session::plugin_dir("brightness").entryInfoList(QDir::Files)) {
         auto path = file.absoluteFilePath();
         if (QLibrary::isLibrary(path)) {
             auto name = Session::fmt_plugin(file.baseName());
@@ -211,7 +211,7 @@ const QList<QString> &Session::System::Brightness::plugins() const
     // generates only once
     static const QList<QString> plugins = [this]{
         QList<QString> names;
-        for (const auto info : this->plugin_infos_) {
+        for (const auto &info : this->plugin_infos_) {
             if (info.supported)
                 names.append(info.name);
         }
@@ -489,8 +489,8 @@ Session::Session(Arbiter &arbiter)
     , layout_(settings_, arbiter)
     , system_(settings_, arbiter)
     , forge_(arbiter)
-    , core_(settings_, arbiter)
     , android_auto_(arbiter)
+    , core_(settings_, arbiter)
 {
 }
 

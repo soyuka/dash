@@ -19,9 +19,12 @@ elm327::elm327(QString canInterface, bool bluetooth)
 }
 elm327::~elm327()
 {
-    this->raw_query("ATZ");
-    sleep(1);
-    close(this->fd);
+    if (this->connected) {
+        this->raw_query("ATZ");
+        sleep(1);
+    }
+    if (this->fd >= 0)
+        close(this->fd);
     this->connected = false;
 }
 
@@ -114,7 +117,7 @@ void elm327::initialize()
     DASH_LOG(info)<<"[ELM327] Initializing elm";
 
     std::vector<std::string> cmds = {"ATD", "ATZ", "ATE0", "ATL0", "ATS0", "AT H0", "ATSP0", "0100"};
-    for (auto const cmd : cmds) {
+    for (auto const &cmd : cmds) {
         this->raw_query(cmd);
         usleep(500000);
     }

@@ -93,11 +93,11 @@ Action::GPIO::~GPIO()
 
 Action::Action(QString name, std::function<void(ActionState)> action, QWidget *parent)
     : QObject(parent)
+    , func_(action)
     , shortcut(parent)
     , gpio()
     , name_(name)
     , key_()
-    , func_(action)
 {
     connect(&this->gpio.watcher, &QFileSystemWatcher::fileChanged, [this, action](QString){
         if (this->gpio.value.isOpen()) {

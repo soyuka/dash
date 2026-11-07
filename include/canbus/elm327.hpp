@@ -40,13 +40,13 @@ class elm327 : public ICANBus
         enum OBDType {USB, BT};
         inline OBDType get_adapter_type(){return this->adapterType;}
     private:
-        bool connected; 
-        OBDType adapterType;
-        QBluetoothSocket* btSocket;
-        int fd;
+        bool connected = false;
+        OBDType adapterType = USB;
+        QBluetoothSocket* btSocket = nullptr;
+        int fd = -1;
         std::mutex elm_mutex;
         std::map<int, std::vector<std::function<void(QByteArray)>>> callbacks;
-        QTimer* bluetooth_watchdog;
+        QTimer* bluetooth_watchdog = nullptr;
 
         void connect(std::string dev_path, speed_t baudrate);
         void handleFrame(QCanBusFrame frame);
