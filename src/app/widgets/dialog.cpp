@@ -1,33 +1,48 @@
-#include <math.h>
-#include <QFrame>
-#include <QGridLayout>
+#include <cmath>
+
+#include <QApplication>
 #include <QKeyEvent>
-#include <QPropertyAnimation>
-#include <QRect>
+#include <QLabel>
+#include <QPainter>
+#include <QScrollArea>
 
 #include "app/arbiter.hpp"
-#include "app/config.hpp"
+
 #include "app/widgets/dialog.hpp"
 
-Dialog::Dialog(Arbiter &arbiter, bool fullscreen, QWidget *parent)
-    : QDialog(parent, Qt::FramelessWindowHint)
+Dialog::Dialog(Arbiter &arbiter, bool fullscreen, QWidget *anchor)
+    : QWidget(arbiter.window())
     , arbiter(arbiter)
+    , anchor(anchor)
+    , fullscreen(fullscreen)
 {
-    this->setAttribute(Qt::WA_TranslucentBackground, true);
+    this->setVisible(false);
+    this->setFocusPolicy(Qt::StrongFocus);
 
-    this->fullscreen = fullscreen;
-    if (this->fullscreen)
-        this->setModal(true);
-
-    QHBoxLayout *layout = new QHBoxLayout(this);
-    layout->setContentsMargins(0, 0, 0, 0);
+    auto layout = new QHBoxLayout(this);
     layout->setSpacing(0);
-    layout->addWidget(this->content_widget());
+    this->frame = this->content_widget();
+    if (this->fullscreen) {
+        int margin = std::ceil(48 * this->arbiter.layout().scale);
+        layout->setContentsMargins(margin, margin, margin, margin);
+        auto column = new QVBoxLayout();
+        column->addStretch();
+        column->addWidget(this->frame);
+        column->addStretch();
+        layout->addStretch();
+        layout->addLayout(column);
+        layout->addStretch();
+    }
+    else {
+        layout->setContentsMargins(0, 0, 0, 0);
+        layout->addWidget(this->frame);
+    }
 
     this->timer = new QTimer(this);
     this->timer->setSingleShot(true);
-    connect(this->timer, &QTimer::timeout, [this]() { this->close(); });
+    connect(this->timer, &QTimer::timeout, this, &QWidget::close);
 
+    this->parentWidget()->installEventFilter(this);
     this->installEventFilter(this);
 }
 
@@ -35,7 +50,8 @@ void Dialog::open(int timeout)
 {
     this->show();
     this->raise();
-    this->activateWindow();
+    if (this->fullscreen)
+        this->setFocus();
     if (timeout > 0)
         this->timer->start(timeout);
 }
@@ -70,12 +86,23 @@ void Dialog::set_button(QPushButton *button)
         this->add_cancel_button();
     button->setFlat(true);
     this->buttons->addWidget(button, 0, Qt::AlignRight);
-    connect(button, &QPushButton::clicked, [this]() { this->close(); });
+    connect(button, &QPushButton::clicked, this, &QWidget::close);
 }
 
-QWidget *Dialog::content_widget()
+void Dialog::add_cancel_button()
+{
+    this->buttons->addStretch();
+
+    QPushButton *button = new QPushButton("cancel", this);
+    button->setFlat(true);
+    connect(button, &QPushButton::clicked, this, &QWidget::close);
+    this->buttons->addWidget(button, 0, Qt::AlignRight);
+}
+
+QFrame *Dialog::content_widget()
 {
     QFrame *frame = new QFrame(this);
+    frame->setObjectName("DialogFrame");
     QVBoxLayout *layout = new QVBoxLayout(frame);
 
     this->title = new QVBoxLayout();
@@ -98,75 +125,69 @@ QWidget *Dialog::content_widget()
     return frame;
 }
 
-void Dialog::set_position()
+void Dialog::update_geometry()
 {
-    if (QWidget *parent = this->parentWidget()) {
-        QPoint point;
-        if (this->fullscreen) {
-            point = parent->geometry().center() - this->rect().center();
-        }
-        else {
-            QWidget *window = parent->window();
-            QPoint window_center = window->mapToGlobal(window->rect().center());
-            QPoint parent_center = parent->mapToGlobal(parent->rect().center());
-
-            int offset = std::ceil(4 * this->arbiter.layout().scale);
-
-            QPoint pivot;
-            if (parent_center.y() > window_center.y()) {
-                pivot = (parent_center.x() > window_center.x()) ? this->rect().bottomRight() : this->rect().bottomLeft();
-                pivot.ry() += (parent->height() / 2) + offset;
-            }
-            else {
-                pivot = (parent_center.x() > window_center.x()) ? this->rect().topRight() : this->rect().topLeft();
-                pivot.ry() -= (parent->height() / 2) + offset;
-            }
-            if (parent_center.x() > window_center.x())
-                pivot.rx() -= this->width() / 2;
-            else
-                pivot.rx() += this->width() / 2;
-            point = this->mapFromGlobal(parent_center) - pivot;
-        }
-        this->move(point);
+    auto window = this->parentWidget();
+    if (this->fullscreen) {
+        this->setGeometry(window->rect());
+        return;
     }
-}
 
-void Dialog::keyPressEvent(QKeyEvent *event)
-{
-    if (event->key() != Qt::Key_Escape || this->fullscreen)
-        QDialog::keyPressEvent(event);
+    this->adjustSize();
+    auto size = this->sizeHint().boundedTo(window->size());
+    this->resize(size);
+
+    if (!this->anchor || !this->anchor->isVisible()) {
+        this->move(QPoint((window->width() - size.width()) / 2, (window->height() - size.height()) / 2));
+        return;
+    }
+
+    // open next to the anchor, towards the centre of the window
+    QRect anchor_rect(this->anchor->mapTo(window, QPoint()), this->anchor->size());
+    QPoint window_center = window->rect().center();
+    int offset = std::ceil(4 * this->arbiter.layout().scale);
+
+    int x = (anchor_rect.center().x() > window_center.x())
+        ? anchor_rect.center().x() - size.width()
+        : anchor_rect.center().x();
+    int y = (anchor_rect.center().y() > window_center.y())
+        ? anchor_rect.top() - offset - size.height()
+        : anchor_rect.bottom() + offset;
+
+    x = std::clamp(x, 0, std::max(0, window->width() - size.width()));
+    y = std::clamp(y, 0, std::max(0, window->height() - size.height()));
+    this->move(x, y);
 }
 
 void Dialog::showEvent(QShowEvent *event)
 {
-    // set to null position
-    this->move(QPoint());
+    this->update_geometry();
     QWidget::showEvent(event);
-
-    if (this->fullscreen) {
-        if (QWidget *parent = this->parentWidget()) {
-            int margin = std::ceil(48 * this->arbiter.layout().scale) * 2;
-            this->setFixedWidth(std::min(this->width(), parent->width() - margin));
-            this->setFixedHeight(std::min(this->height(), parent->height() - margin));
-        }
-    }
-
-    this->set_position();
 }
 
-void Dialog::closeEvent(QCloseEvent *)
+void Dialog::keyPressEvent(QKeyEvent *event)
 {
-    // On Raspberry Pi's, sometimes LXPanel will grab focus after a dialog closes
-    // Focus should be returned to main dash window instead, so that shortcuts work
-    // and that dash remains fullscreen
-    //
-    // Tells the main window to grab focus
-    this->arbiter.window()->activateWindow();
+    if (event->key() == Qt::Key_Escape && this->fullscreen)
+        this->close();
+    else
+        QWidget::keyPressEvent(event);
+}
+
+void Dialog::paintEvent(QPaintEvent *)
+{
+    if (this->fullscreen)
+        QPainter(this).fillRect(this->rect(), QColor(0, 0, 0, 128));
 }
 
 bool Dialog::eventFilter(QObject *object, QEvent *event)
 {
-    // restart timer on any event
+    if (object == this->parentWidget()) {
+        if (event->type() == QEvent::Resize && this->isVisible())
+            this->update_geometry();
+        return false;
+    }
+
+    // any interaction keeps a timed dialog open
     if (this->timer->isActive())
         this->timer->start(this->timer->interval());
 
@@ -174,36 +195,25 @@ bool Dialog::eventFilter(QObject *object, QEvent *event)
 }
 
 SnackBar::SnackBar(Arbiter &arbiter)
-    : Dialog(arbiter, false, this->get_ref())
+    : Dialog(arbiter, false)
 {
     this->setFixedHeight(64 * this->arbiter.layout().scale);
 }
 
-void SnackBar::resizeEvent(QResizeEvent* event)
+void SnackBar::showEvent(QShowEvent *event)
 {
-    // its possible the ref didnt exist when the parent was originally set
-    if (!this->parentWidget()) {
-        auto flags = this->windowFlags();
-        this->setParent(this->get_ref());
-        this->setWindowFlags(flags);
-    }
+    Dialog::showEvent(event);
 
-    if (QWidget *parent = this->parentWidget())
-        this->setFixedWidth(parent->width() * (2 / 3.0));
-
-    Dialog::resizeEvent(event);
+    // centred right above the control bar, where the MsgRef placeholder sits
+    auto window = this->parentWidget();
+    this->setFixedWidth(window->width() * (2 / 3.0));
+    int bottom = window->height();
+    if (auto ref = window->findChild<QWidget *>("MsgRef"); ref && ref->isVisible())
+        bottom = ref->mapTo(window, QPoint()).y();
+    this->move((window->width() - this->width()) / 2, std::max(0, bottom - this->height()));
 }
 
-void SnackBar::mousePressEvent(QMouseEvent *event)
+void SnackBar::mousePressEvent(QMouseEvent *)
 {
     this->close();
-}
-
-QWidget *SnackBar::get_ref()
-{
-    for (QWidget *widget : qApp->allWidgets()) {
-        if (widget->objectName() == "MsgRef")
-            return widget;
-    }
-    return nullptr;
 }

@@ -284,8 +284,13 @@ VehicleState {
     qproperty-warning_color: #F4511E;
 }
 
-QDialog,
-QDialog > QFrame {
+#FullscreenButton {
+    background-color: rgba(255, 255, 255, 160);
+    border-radius: 8px;
+    border: 2px solid rgba(224, 224, 224, 160);
+}
+
+#DialogFrame {
     background-color: rgb(255, 255, 255);
     border-radius: 8px;
     border: 2px solid rgb(224, 224, 224);

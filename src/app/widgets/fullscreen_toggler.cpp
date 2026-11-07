@@ -1,7 +1,10 @@
-#include <QLabel>
+#include <QHBoxLayout>
+#include <QMouseEvent>
+#include <QPushButton>
+
+#include "app/arbiter.hpp"
 
 #include "app/widgets/fullscreen_toggler.hpp"
-#include "app/arbiter.hpp"
 
 FullscreenToggler::FullscreenToggler(Arbiter &arbiter, QString name, QWidget *widget)
     : arbiter(arbiter)
@@ -14,6 +17,7 @@ NullFullscreenToggler::NullFullscreenToggler(Arbiter &arbiter)
     : QFrame(arbiter.window())
     , FullscreenToggler(arbiter, "none", this)
 {
+    this->setVisible(false);
 }
 
 BarFullscreenToggler::BarFullscreenToggler(Arbiter &arbiter)
@@ -36,67 +40,53 @@ BarFullscreenToggler::BarFullscreenToggler(Arbiter &arbiter)
 }
 
 ButtonFullscreenToggler::ButtonFullscreenToggler(Arbiter &arbiter)
-    : QDialog(arbiter.window(), Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint | Qt::WindowDoesNotAcceptFocus)
+    : QFrame(arbiter.window())
     , FullscreenToggler(arbiter, "button", this)
-    , p(this->arbiter.window()->pos())
-    , last_pos(this->p)
-    , touch_start()
     , label(new QLabel(" X "))
 {
-    this->setAttribute(Qt::WA_TranslucentBackground, true);
-    this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    this->setObjectName("FullscreenButton");
+    this->setFocusPolicy(Qt::NoFocus);
 
     this->label->setMargin(2);
-    this->label->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Maximum);
     this->label->setAlignment(Qt::AlignCenter);
 
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
-    layout->addWidget(label);
+    layout->addWidget(this->label);
 
-    connect(&this->arbiter, &Arbiter::brightness_changed, [this](uint8_t brightness){
-        this->setWindowOpacity(brightness / 510.0);
-    });
+    this->setVisible(false);
 }
 
-void ButtonFullscreenToggler::showEvent(QShowEvent *event)
+void ButtonFullscreenToggler::enable()
 {
-    QDialog::showEvent(event);
-
-    this->setWindowOpacity(this->arbiter.system().brightness.value / 510.0);
-    this->move(this->last_pos);
+    this->adjustSize();
+    this->move_within_window(this->pos());
+    this->show();
+    this->raise();
 }
 
-void ButtonFullscreenToggler::closeEvent(QCloseEvent *event)
+void ButtonFullscreenToggler::move_within_window(QPoint pos)
 {
-    this->last_pos = this->pos();
-    this->arbiter.window()->activateWindow();
+    auto window = this->parentWidget();
+    pos.setX(std::clamp(pos.x(), 0, std::max(0, window->width() - this->width())));
+    pos.setY(std::clamp(pos.y(), 0, std::max(0, window->height() - this->height())));
+    this->move(pos);
 }
 
 void ButtonFullscreenToggler::mousePressEvent(QMouseEvent *event)
 {
-    this->setWindowOpacity(this->arbiter.system().brightness.value / 255.0);
-    QFont f = this->label->font();
-    f.setPointSize(f.pointSize() * 1.5);
-    this->label->setFont(f);
-    this->p = event->pos();
-    this->touch_start = QTime::currentTime();
+    this->grab = event->position().toPoint();
+    this->touch.start();
 }
 
-void ButtonFullscreenToggler::mouseReleaseEvent(QMouseEvent *event)
+void ButtonFullscreenToggler::mouseReleaseEvent(QMouseEvent *)
 {
-    this->arbiter.window()->activateWindow();
-    this->setWindowOpacity(this->arbiter.system().brightness.value / 510.0);
-    QFont f = this->label->font();
-    f.setPointSize(f.pointSize() / 1.5);
-    this->label->setFont(f);
-
-    if (this->touch_start.msecsTo(QTime::currentTime()) < 100)
+    if (this->touch.isValid() && !this->touch.hasExpired(150))
         this->arbiter.set_fullscreen(false);
 }
 
 void ButtonFullscreenToggler::mouseMoveEvent(QMouseEvent *event)
 {
-    this->move(event->globalPosition().toPoint() - this->p);
+    this->move_within_window(this->mapToParent(event->position().toPoint()) - this->grab);
 }

@@ -1,57 +1,54 @@
 #include <QApplication>
-#include <QStringList>
-#include <QWindow>
+#include <QCommandLineParser>
+#include <QIcon>
+#include <QRegularExpression>
+#include <QSettings>
 
-#include "app/window.hpp"
+#include "DashLog.hpp"
 #include "app/action.hpp"
+#include "app/window.hpp"
 
 int main(int argc, char *argv[])
 {
     QApplication dash(argc, argv);
-
     dash.setOrganizationName("openDsh");
     dash.setApplicationName("dash");
+    // Wayland app_id, for compositor window rules (e.g. labwc <windowRule identifier="dash">)
+    dash.setDesktopFileName("dash");
+    dash.setWindowIcon(QIcon(":/logo.png"));
     dash.installEventFilter(ActionEventFilter::get_instance());
 
-    QSize size = dash.primaryScreen()->size();
-    QPoint pos = dash.primaryScreen()->geometry().topLeft();
-    bool fullscreen = true;
+    QCommandLineParser parser;
+    parser.setApplicationDescription("openDsh head unit");
+    parser.addHelpOption();
+    QCommandLineOption windowed("windowed", "Run in a WIDTHxHEIGHT window instead of fullscreen.", "WIDTHxHEIGHT");
+    parser.addOption(windowed);
+    parser.process(dash);
 
     QSettings settings;
     DASH_LOG(info) << "loaded config: " << settings.fileName().toStdString();
 
-    QStringList args = dash.arguments();
-    if (args.size() > 2) {
-        size = QSize(args.at(1).toInt(), args.at(2).toInt());
-        if (args.size() > 4)
-            pos = QPoint(args.at(3).toInt(), args.at(4).toInt());
-        fullscreen = false;
+    QSize size;
+    if (parser.isSet(windowed)) {
+        auto match = QRegularExpression("^(\\d+)x(\\d+)$").match(parser.value(windowed));
+        if (!match.hasMatch()) {
+            DASH_LOG(error) << "--windowed expects WIDTHxHEIGHT, got " << parser.value(windowed).toStdString();
+            return 1;
+        }
+        size = QSize(match.captured(1).toInt(), match.captured(2).toInt());
+    }
+    else if (settings.contains("Window/size")) {
+        size = settings.value("Window/size").toSize();
+    }
+
+    MainWindow window;
+    if (size.isValid()) {
+        window.resize(size);
+        window.show();
     }
     else {
-        settings.beginGroup("Window");
-        if (settings.contains("size")) {
-            size = settings.value("size").toSize();
-            if (settings.contains("pos"))
-                pos = settings.value("pos").toPoint();
-            fullscreen = false;
-        }
+        window.showFullScreen();
     }
-
-    QPixmap pixmap(QPixmap(":/splash.png").scaledToHeight(size.height() / 2));
-    QSplashScreen splash(pixmap);
-    splash.setMask(pixmap.mask());
-    splash.move(pos.x() + ((size.width() / 2) - (splash.width() / 2)), pos.y() + ((size.height() / 2) - (splash.height() / 2)));
-    splash.show();
-    dash.processEvents();
-
-    MainWindow window(QRect(pos, size));
-    window.setWindowIcon(QIcon(":/logo.png"));
-    window.setWindowFlags(Qt::FramelessWindowHint);
-    if (fullscreen)
-        window.setWindowState(Qt::WindowFullScreen);
-
-    window.show();
-    splash.finish(&window);
 
     return dash.exec();
 }

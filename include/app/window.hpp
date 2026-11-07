@@ -58,7 +58,7 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
    public:
-    MainWindow(QRect geometry);
+    MainWindow();
     void set_fullscreen(Page *page);
     Arbiter &arbiter() { return this->arbiter_; }
 
@@ -68,6 +68,4 @@ class MainWindow : public QMainWindow {
    private:
     Arbiter arbiter_;
     QStackedWidget *stack;
-
-    MainWindow *init(QRect geometry);
 };

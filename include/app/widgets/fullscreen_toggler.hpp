@@ -1,15 +1,16 @@
 #pragma once
 
-#include <QTime>
-
-#include <QDebug>
-#include <QDialog>
+#include <QElapsedTimer>
+#include <QFrame>
+#include <QLabel>
+#include <QPoint>
 
 class Arbiter;
 
 class FullscreenToggler {
    public:
     FullscreenToggler(Arbiter &arbiter, QString name, QWidget *widget);
+    virtual ~FullscreenToggler() = default;
 
     virtual void enable() = 0;
     virtual void disable() = 0;
@@ -45,25 +46,25 @@ class BarFullscreenToggler : public QFrame, public FullscreenToggler {
     void disable() override { this->setVisible(false); }
 };
 
-class ButtonFullscreenToggler : public QDialog, public FullscreenToggler {
+// A draggable button floating over the main window, kept inside it.
+class ButtonFullscreenToggler : public QFrame, public FullscreenToggler {
     Q_OBJECT
 
    public:
     ButtonFullscreenToggler(Arbiter &arbiter);
 
-    void enable() override { this->show(); }
-    void disable() override { this->close(); }
+    void enable() override;
+    void disable() override { this->hide(); }
 
    protected:
-    void showEvent(QShowEvent *event) override;
-    void closeEvent(QCloseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;
 
    private:
-    QPoint p;
-    QPoint last_pos;
-    QTime touch_start;
+    QPoint grab;
+    QElapsedTimer touch;
     QLabel *label;
+
+    void move_within_window(QPoint pos);
 };

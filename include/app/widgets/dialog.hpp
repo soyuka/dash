@@ -1,22 +1,23 @@
 #pragma once
 
-#include <QApplication>
-#include <QDialog>
-#include <QLabel>
-#include <QPainter>
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QPointer>
 #include <QPushButton>
-#include <QScrollArea>
 #include <QTimer>
 #include <QVBoxLayout>
-
+#include <QWidget>
 
 class Arbiter;
 
-class Dialog : public QDialog {
+// Dialogs are overlays inside the main window rather than top-level windows:
+// Wayland clients cannot position their own toplevels, and a single surface
+// keeps the kiosk independent of compositor placement and focus policies.
+class Dialog : public QWidget {
     Q_OBJECT
 
    public:
-    Dialog(Arbiter &arbiter, bool fullscreen, QWidget *parent = nullptr);
+    Dialog(Arbiter &arbiter, bool fullscreen, QWidget *anchor = nullptr);
     void open(int timeout = 0);
 
     void set_title(QString str);
@@ -26,30 +27,23 @@ class Dialog : public QDialog {
    protected:
     Arbiter &arbiter;
 
-    void showEvent(QShowEvent *event);
-    void keyPressEvent(QKeyEvent *event);
-    bool eventFilter(QObject *object, QEvent *event);
-    void closeEvent(QCloseEvent *event) override;
-    
+    void showEvent(QShowEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
+    bool eventFilter(QObject *object, QEvent *event) override;
+
    private:
+    QPointer<QWidget> anchor;
+    QFrame *frame;
     QVBoxLayout *title;
     QVBoxLayout *body;
     QHBoxLayout *buttons;
     QTimer *timer;
     bool fullscreen;
 
-    QWidget *content_widget();
-    void set_position();
-
-    inline void add_cancel_button()
-    {
-        this->buttons->addStretch();
-
-        QPushButton *button = new QPushButton("cancel", this);
-        button->setFlat(true);
-        connect(button, &QPushButton::clicked, [this]() { this->close(); });
-        this->buttons->addWidget(button, 0, Qt::AlignRight);
-    }
+    QFrame *content_widget();
+    void update_geometry();
+    void add_cancel_button();
 };
 
 class SnackBar : public Dialog {
@@ -58,11 +52,7 @@ class SnackBar : public Dialog {
    public:
     SnackBar(Arbiter &arbiter);
 
-    void resizeEvent(QResizeEvent* event);
-
    protected:
+    void showEvent(QShowEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
-
-   private:
-    QWidget *get_ref();
 };
