@@ -5,10 +5,8 @@
 
 Test::~Test()
 {
-    if (this->climate)
-        delete this->climate;
-    if (this->vehicle)
-        delete this->vehicle;
+    delete this->climate;
+    delete this->vehicle;
 }
 
 QList<QWidget *> Test::widgets()

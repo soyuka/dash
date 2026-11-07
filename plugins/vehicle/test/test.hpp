@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QPointer>
 #include "plugins/vehicle_plugin.hpp"
 #include "app/widgets/climate.hpp"
 #include "app/widgets/vehicle.hpp"
@@ -18,6 +19,7 @@ class Test : public QObject, VehiclePlugin {
     bool init(ICANBus*) override;
 
    private:
-    Climate *climate;
-    Vehicle *vehicle;
+    // the vehicle tab is owned by the page it is added to
+    QPointer<Climate> climate;
+    QPointer<Vehicle> vehicle;
 };
