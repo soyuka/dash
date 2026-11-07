@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
     echo "usage: $0 <amd64|arm64> <aasdk|openauto|dash|all> [extra cmake args...]" >&2
-    echo "  env: BUILD_TYPE (default Release), RUN_TESTS=0 to skip aasdk unit tests on amd64," >&2
+    echo "  env: BUILD_TYPE (default Release), RUN_TESTS=0 to skip aasdk/openauto unit tests on amd64," >&2
     echo "       REBUILD_IMAGE=1 to rebuild the docker image first" >&2
     exit 1
 }
@@ -43,6 +43,8 @@ for repo in "${repos[@]}"; do
     repo_args=()
     if [[ $repo == aasdk ]]; then
         repo_args=(-DAASDK_TEST=$([[ $run_tests == 1 ]] && echo ON || echo OFF))
+    elif [[ $repo == openauto ]]; then
+        repo_args=(-DOPENAUTO_TEST=$([[ $run_tests == 1 ]] && echo ON || echo OFF))
     fi
 
     echo "==> $repo ($arch, $build_type)"
@@ -62,6 +64,8 @@ for repo in "${repos[@]}"; do
             cmake --install "$build_dir"
             if [[ $repo == aasdk && $run_tests == 1 ]]; then
                 "$build_dir/aasdk_ut" --log_level=test_suite --report_level=short
+            elif [[ $repo == openauto && $run_tests == 1 ]]; then
+                ctest --test-dir "$build_dir" --output-on-failure
             fi
         ' _ "$build_dir" "$stage" "$repo" "$run_tests" \
         -DCMAKE_BUILD_TYPE="$build_type" "${toolchain[@]}" "${repo_args[@]}" "$@"
