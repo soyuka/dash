@@ -11,3 +11,4 @@ endfunction()
 
 dash_add_test(tst_main_window)
 dash_add_test(tst_obd)
+dash_add_test(tst_socketcanbus)
