@@ -4,7 +4,8 @@
 AAHandler::AAHandler() :
 QObject()
 {
-
+    // the base leaves its factory pointer uninitialised until openauto starts
+    this->setServiceFactory(nullptr);
 }
 
 AAHandler::~AAHandler()
