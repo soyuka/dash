@@ -47,7 +47,13 @@ Then start it from the labwc session with `./autostart.sh`, or by hand:
 ```
 QT_QPA_PLATFORM=wayland /opt/opendsh/bin/dash               # fullscreen
 QT_QPA_PLATFORM=wayland /opt/opendsh/bin/dash --windowed 800x480
+QT_QPA_PLATFORM=wayland /opt/opendsh/bin/dash --logical-size 432x240
 ```
+
+`--logical-size WxH` (or `logical_size=432x240` under `[Window]` in `dash.conf`, the flag
+wins) lays the UI out at WxH and stretches it to fill the window with separate x and y
+scales, for panels driven through a wider video mode (e.g. 2008x240 for a 432x240 panel)
+where the compositor only offers a uniform output scale.
 
 Settings live in `~/.config/openDsh/dash.conf`; openauto reads `openauto.ini` from the
 working directory.

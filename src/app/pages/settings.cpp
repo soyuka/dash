@@ -15,6 +15,7 @@
 #include "app/action.hpp"
 #include "app/config.hpp"
 #include "app/session.hpp"
+#include "app/stretch_view.hpp"
 #include "app/window.hpp"
 #include "app/pages/settings.hpp"
 #include "app/services/server.hpp"
@@ -229,7 +230,7 @@ QWidget *MainSettingsTab::controls_widget()
     auto layout = new QVBoxLayout(widget);
 
     auto minimize_button = new QPushButton("minimize");
-    connect(minimize_button, &QPushButton::clicked, [this]{ this->arbiter.window()->setWindowState(Qt::WindowMinimized); });
+    connect(minimize_button, &QPushButton::clicked, [this]{ StretchView::top_level(this->arbiter.window())->setWindowState(Qt::WindowMinimized); });
     layout->addWidget(minimize_button);
     auto exit_button = new QPushButton("exit");
     connect(exit_button, &QPushButton::clicked, [this]{ qApp->exit(); });

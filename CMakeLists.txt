@@ -42,6 +42,7 @@ add_library(dash_core SHARED
     src/app/arbiter.cpp
     src/app/config.cpp
     src/app/graphics/dynamic_svg.cpp
+    src/app/launch_options.cpp
     src/app/pages/launcher.cpp
     src/app/pages/media.cpp
     src/app/pages/openauto.cpp
@@ -54,6 +55,7 @@ add_library(dash_core SHARED
     src/app/services/clock.cpp
     src/app/services/server.cpp
     src/app/session.cpp
+    src/app/stretch_view.cpp
     src/app/utilities/icon_engine.cpp
     src/app/utilities/stylesheet.cpp
     src/app/widgets/climate.cpp
