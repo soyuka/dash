@@ -71,6 +71,7 @@ add_library(dash_core SHARED
     src/canbus/elm327.cpp
     src/canbus/socketcanbus.cpp
     src/obd/command.cpp
+    src/obd/decoders.cpp
 )
 target_include_directories(dash_core PUBLIC
     ${PROJECT_SOURCE_DIR}/include
