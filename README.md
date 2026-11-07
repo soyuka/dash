@@ -12,30 +12,61 @@ Main features of Dash include:
 *	Bluetooth Media Control
 *	Real-Time Vehicle OBD-II Data & SocketCAN Capabilities
 *	Theming `Dark/Light mode` `Customizable RGB Accent Color`
-*	True Raspberry Pi 7” Official Touchscreen Brightness Control
-*	App-Launcher built in
+*	Backlight brightness control (sysfs) or software dimming
 *	Keyboard Shortcuts `GPIO Triggerable`
 
 ![](docs/imgs/opendash-ui.gif)
 
 # Getting Started
 
-## Video walk through
-_steps may be slightly different such as ia (intelligent-auto) has been renamed to dash, the UI has changed, etc..._
+This branch targets Debian 13 (trixie), Qt 6 and Wayland (labwc on Raspberry Pi OS).
+aasdk, openauto and dash are expected side by side:
 
-https://youtu.be/CIdEN2JNAzw
-
-## Install Script
-
-Dash can be built automatically utilizing an included script.
-
-The install script included in the dash repo will install all the required packages and compile all portions of the OpenDash project.
-
-### 1. Clone the repo, Run the install script
 ```
-git clone https://github.com/openDsh/dash
-
-cd dash
-
-./install.sh
+opendsh/
+  aasdk/  openauto/  dash/
 ```
+
+## Cross-build and deploy to a Raspberry Pi (recommended)
+
+Needs Docker on the build machine only.
+
+```
+dash/docker/build.sh amd64 all      # native build + unit tests
+dash/docker/deploy.sh pi@raspberrypi --install-packages
+```
+
+`deploy.sh` cross-builds for arm64 (`docker/build.sh arm64 all`), copies the staged
+`bin/` and `lib/` to `/opt/opendsh` on the Pi, registers `/opt/opendsh/lib` with the
+dynamic linker and installs the runtime packages listed by `docker/runtime-packages.sh`
+(derived from the binaries' `NEEDED` entries plus run-time plugins; a snapshot is kept in
+`docker/runtime-packages.txt`). `--no-build` deploys an existing `_stage/arm64`.
+
+Then start it from the labwc session with `./autostart.sh`, or by hand:
+
+```
+QT_QPA_PLATFORM=wayland /opt/opendsh/bin/dash               # fullscreen
+QT_QPA_PLATFORM=wayland /opt/opendsh/bin/dash --windowed 800x480
+```
+
+Settings live in `~/.config/openDsh/dash.conf`; openauto reads `openauto.ini` from the
+working directory.
+
+## Native build on Debian trixie
+
+```
+./install.sh                 # runtime + build packages, builds into /opt/opendsh
+./install.sh --runtime       # only the runtime packages
+```
+
+## Adding a page
+
+A page is a widget that also derives from `Page` (see `include/app/pages/page.hpp`):
+construct the widgets in `init()`, then add an instance to the list in
+`Session::Layout::Layout` (`src/app/session.cpp`). It gets a rail button, an entry in
+Layout settings, a "Show ... Page" action and fullscreen support. CAN access goes through
+`ICANBus` (`SocketCANBus::get_instance()`, `registerFrameHandler(id, callback)`); vehicle
+plugins (`plugins/vehicle/`) receive the bus in `init()`.
+
+Dialogs (`Dialog`) and the fullscreen button are drawn inside the main window, so pages
+should not open top-level windows: under Wayland the compositor decides where those go.
