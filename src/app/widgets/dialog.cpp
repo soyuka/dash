@@ -7,6 +7,7 @@
 #include <QScrollArea>
 
 #include "app/arbiter.hpp"
+#include "app/keypad_navigator.hpp"
 
 #include "app/widgets/dialog.hpp"
 
@@ -46,12 +47,31 @@ Dialog::Dialog(Arbiter &arbiter, bool fullscreen, QWidget *anchor)
     this->installEventFilter(this);
 }
 
+Dialog *Dialog::top(QWidget *window)
+{
+    const auto children = window->children();
+    for (auto it = children.rbegin(); it != children.rend(); ++it) {
+        auto dialog = qobject_cast<Dialog *>(*it);
+        if (dialog && dialog->isVisible() && !qobject_cast<SnackBar *>(dialog))
+            return dialog;
+    }
+    return nullptr;
+}
+
 void Dialog::open(int timeout)
 {
+    auto focus = this->window()->focusWidget();
+    if (!this->isAncestorOf(focus))
+        this->return_focus = focus;
+
     this->show();
     this->raise();
-    if (this->fullscreen)
-        this->setFocus();
+    if (!this->isAncestorOf(this->window()->focusWidget())) {
+        if (auto first = keypad::first(this))
+            first->setFocus(Qt::OtherFocusReason);
+        else if (this->fullscreen)
+            this->setFocus();
+    }
     if (timeout > 0)
         this->timer->start(timeout);
 }
@@ -163,6 +183,16 @@ void Dialog::showEvent(QShowEvent *event)
 {
     this->update_geometry();
     QWidget::showEvent(event);
+}
+
+void Dialog::hideEvent(QHideEvent *event)
+{
+    QWidget::hideEvent(event);
+
+    auto focus = this->window()->focusWidget();
+    bool lost = !focus || focus == this || this->isAncestorOf(focus) || !focus->isVisible();
+    if (lost && this->return_focus && this->return_focus->isVisible())
+        this->return_focus->setFocus(Qt::OtherFocusReason);
 }
 
 void Dialog::keyPressEvent(QKeyEvent *event)

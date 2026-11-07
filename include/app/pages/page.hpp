@@ -28,6 +28,8 @@ class Page {
     void enable(bool enable);
 
     const QString &name() { return this->name_; }
+    // stable key for bindings and settings, derived from the name
+    QString id() const { return this->name_.toLower().replace(' ', '_'); }
     const QString &icon_name() { return this->icon_name_; }
     const bool &toggleale() { return this->toggleable_; }
     PageContainer *container() { return this->container_; }

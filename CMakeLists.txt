@@ -42,6 +42,7 @@ add_library(dash_core SHARED
     src/app/arbiter.cpp
     src/app/config.cpp
     src/app/graphics/dynamic_svg.cpp
+    src/app/keypad_navigator.cpp
     src/app/launch_options.cpp
     src/app/pages/launcher.cpp
     src/app/pages/media.cpp

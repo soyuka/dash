@@ -45,6 +45,8 @@ class Arbiter : public QObject {
     void increase_volume(uint8_t val);
     void set_cursor(bool enabled);
     void set_action(Action *action, QString key);
+    // projection on screen, no dialog over it: keypad input belongs to Android Auto
+    bool android_auto_in_front();
 
     QMainWindow *window();
     QSettings &settings() { return this->session_.settings_; }

@@ -57,6 +57,9 @@ void ActionDialog::keyPressEvent(QKeyEvent *event)
         return;
 
     this->label->setText(QKeySequence(event->keyCombination()).toString());
+
+    // one key is captured; the next ones navigate to save or cancel, or a keypad would be trapped here
+    ActionEventFilter::get_instance()->enable();
 }
 
 void ActionDialog::showEvent(QShowEvent *event)
@@ -91,20 +94,23 @@ Action::GPIO::~GPIO()
         value.close();
 }
 
-Action::Action(QString name, std::function<void(ActionState)> action, QWidget *parent)
+Action::Action(QString id, QString name, std::function<void(ActionState)> func, QWidget *parent,
+               std::function<bool()> available)
     : QObject(parent)
-    , func_(action)
+    , func_(std::move(func))
+    , available_(std::move(available))
     , shortcut(parent)
     , gpio()
+    , id_(id)
     , name_(name)
     , key_()
 {
-    connect(&this->gpio.watcher, &QFileSystemWatcher::fileChanged, [this, action](QString){
+    connect(&this->gpio.watcher, &QFileSystemWatcher::fileChanged, [this](QString){
         if (this->gpio.value.isOpen()) {
             this->gpio.value.seek(0);
             if (this->gpio.active_low == this->gpio.value.read(1).at(0)) {
                 this->gpio.watcher.blockSignals(true);
-                action(ActionState::Triggered);
+                this->fire(ActionState::Triggered);
                 QTimer::singleShot(300, [this]{ this->gpio.watcher.blockSignals(false); });
             }
             else {
@@ -115,40 +121,57 @@ Action::Action(QString name, std::function<void(ActionState)> action, QWidget *p
             DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": " << this->gpio.value.fileName().toStdString() << " is not open";
         }
     });
-    connect(&this->shortcut, &QShortcut::activated, [action]{ action(ActionState::Triggered); });
+    connect(&this->shortcut, &QShortcut::activated, [this]{ this->fire(ActionState::Triggered); });
 }
 
+void Action::fire(ActionState state)
+{
+    this->func_(state);
+    emit fired(state);
+}
 
 bool ActionEventFilter::eventFilter(QObject* obj, QEvent* event)
 {
-    if (this->disabled || (this->eventFilterMap.count() == 0))
+    if (this->disabled)
         return false;
 
-    Action::ActionState state = Action::ActionState::Triggered;
-    switch (event->type()) {
-        case(QEvent::KeyPress):
-            state = Action::ActionState::Activated;
-            break;
-        case(QEvent::KeyRelease):
-            state = Action::ActionState::Deactivated;
-            break;
-        default:
+    auto type = event->type();
+    if (type != QEvent::KeyPress && type != QEvent::KeyRelease)
+        return false;
+
+    auto key = static_cast<QKeyEvent *>(event);
+    auto code = key->key();
+
+    // a consumed press owns its repeats and release, even if the action became unavailable since
+    if (type == QEvent::KeyRelease) {
+        if (!this->held_.contains(code))
             return false;
+        if (!key->isAutoRepeat()) {
+            this->held_.remove(code);
+            if (auto action = this->eventFilterMap.value(code, nullptr)) {
+                std::lock_guard<decltype(mutex_)> lock(mutex_);
+                action->fire(Action::ActionState::Deactivated);
+            }
+        }
+        return true;
     }
-    QKeyEvent* key = static_cast<QKeyEvent*>(event);
-    if (!key->isAutoRepeat())
-    {
-        auto it = this->eventFilterMap.find(key->key());
-        if (it != this->eventFilterMap.end())
-        {
+
+    if (key->isAutoRepeat() && this->held_.contains(code))
+        return true;
+
+    if (!key->isAutoRepeat()) {
+        auto action = this->eventFilterMap.value(code, nullptr);
+        if (action && action->available()) {
+            this->held_.insert(code);
             std::lock_guard<decltype(mutex_)> lock(mutex_);
-            (*it)->func_(state);
+            action->fire(Action::ActionState::Activated);
             return true;
         }
+        this->held_.remove(code);
     }
-    return false;
-}
 
+    return this->fallback_ && this->fallback_(obj, key);
+}
 
 ActionEventFilter *ActionEventFilter::get_instance()
 {
@@ -190,7 +213,7 @@ void Action::set(QString key)
             DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": failed to open " << this->gpio.value.fileName().toStdString();
         }
     }
-    else if (!this->key_.isNull()) {
+    else if (!this->key_.isEmpty()) {
         DASH_LOG(info) << "[Action] " << this->key_.toStdString() << ": setting action as key";
         // if + is present, it means sequence is multiple keys.
         // I'd have implemented this by looking at the .count() of the QKeySequence

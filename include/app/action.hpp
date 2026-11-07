@@ -13,6 +13,7 @@
 #include <QWidget>
 #include <functional>
 #include <mutex>
+#include <QSet>
 
 
 #include "app/widgets/dialog.hpp"
@@ -69,12 +70,20 @@ class Action : public QObject {
         Deactivated,
         Triggered
     };
-    Action(QString name, std::function<void(ActionState)> func, QWidget *parent);
-    void set(QString key);
+    Q_ENUM(ActionState)
 
+    Action(QString id, QString name, std::function<void(ActionState)> func, QWidget *parent,
+           std::function<bool()> available = {});
+    void set(QString key);
+    void fire(ActionState state);
+    bool available() const { return !this->available_ || this->available_(); }
+
+    QString id() const { return this->id_; }
     QString key() const { return this->key_; }
     QString name() const { return this->name_; }
-    std::function<void(ActionState)> func_;
+
+   signals:
+    void fired(Action::ActionState state);
 
    private:
     struct GPIO {
@@ -86,18 +95,25 @@ class Action : public QObject {
         ~GPIO();
     };
 
+    std::function<void(ActionState)> func_;
+    std::function<bool()> available_;
     QShortcut shortcut;
     GPIO gpio;
 
+    QString id_;
     QString name_;
     QString key_;
 };
 
+// Single entry point for key input: a key bound to an available action fires
+// it, anything else goes to the fallback (keypad navigation).
 class ActionEventFilter : public QObject
 {
     Q_OBJECT
 
    public:
+    using Fallback = std::function<bool(QObject *, QKeyEvent *)>;
+
     ActionEventFilter(){};
     bool eventFilter(QObject* obj, QEvent* event);
     static ActionEventFilter *get_instance();
@@ -105,10 +121,11 @@ class ActionEventFilter : public QObject
 
     void enable() { this->disabled = false; }
     void disable() { this->disabled = true; }
+    void set_fallback(Fallback fallback) { this->fallback_ = std::move(fallback); }
 
    private:
     std::mutex mutex_;
     bool disabled = false;
+    QSet<int> held_;
+    Fallback fallback_;
 };
-
-

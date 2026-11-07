@@ -85,6 +85,7 @@ class OpenAutoPage : public QStackedWidget, public Page {
    public:
     OpenAutoPage(Arbiter &arbiter, QWidget *parent = nullptr);
     void init() override;
+    bool projecting() const { return this->frame && this->currentWidget() == this->frame; }
 
    protected:
     void resizeEvent(QResizeEvent *event);

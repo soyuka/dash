@@ -2,6 +2,7 @@
 #include <QLocale>
 #include <QPushButton>
 
+#include "app/keypad_navigator.hpp"
 #include "app/quick_views/quick_view.hpp"
 #include "app/utilities/icon_engine.hpp"
 #include "app/widgets/dialog.hpp"
@@ -218,6 +219,8 @@ MainWindow::MainWindow()
     auto dash = new Dash(this->arbiter_);
     this->stack->addWidget(dash);
     dash->init();
+
+    new KeypadNavigator(this->arbiter_, this);
 
     this->arbiter_.system().brightness.set();
 

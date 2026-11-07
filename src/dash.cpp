@@ -7,7 +7,6 @@
 #include <QSettings>
 
 #include "DashLog.hpp"
-#include "app/action.hpp"
 #include "app/launch_options.hpp"
 #include "app/stretch_view.hpp"
 #include "app/window.hpp"
@@ -20,7 +19,6 @@ int main(int argc, char *argv[])
     // Wayland app_id, for compositor window rules (e.g. labwc <windowRule identifier="dash">)
     dash.setDesktopFileName("dash");
     dash.setWindowIcon(QIcon(":/logo.png"));
-    dash.installEventFilter(ActionEventFilter::get_instance());
 
     QCommandLineParser parser;
     parser.setApplicationDescription("openDsh head unit");

@@ -12,6 +12,7 @@
 #include <QIcon>
 #include <QList>
 #include <QMap>
+#include <QPair>
 #include <QPluginLoader>
 #include <QSettings>
 #include <QString>
@@ -176,6 +177,15 @@ class Session {
     };
 
     struct Core {
+        static const QString BINDINGS_GROUP;
+        // upstream openDsh stored bindings as Core/Action/<index> in this order
+        static const QStringList LEGACY_ACTION_IDS;
+        static const QList<QPair<QString, QString>> DEFAULT_BINDINGS;
+
+        // id -> key for the given action ids: migrates index-based entries, then
+        // stored bindings ("" = explicitly unbound), then defaults on keys still free
+        static QMap<QString, QString> load_bindings(QSettings &settings, const QStringList &ids);
+
         bool cursor;
 
         Core(QSettings &settings, Arbiter &arbiter);
@@ -183,8 +193,7 @@ class Session {
         void set_cursor() const;
 
         const QList<Action *> &actions() const { return this->actions_; }
-        Action *action(int id) const { return this->actions_.value(id, nullptr); }
-        int action_id(Action *action) const { return this->actions_.indexOf(action); }
+        Action *action(const QString &id) const;
         QString stylesheet(Theme::Mode mode) const { return this->stylesheets_[mode]; }
 
        private:

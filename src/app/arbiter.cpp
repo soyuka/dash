@@ -1,5 +1,6 @@
 #include "app/session.hpp"
 #include "app/window.hpp"
+#include "app/widgets/dialog.hpp"
 
 #include "app/arbiter.hpp"
 
@@ -238,22 +239,21 @@ void Arbiter::set_cursor(bool enabled)
 
 void Arbiter::set_action(Action *action, QString key)
 {
-    auto idx = this->core().action_id(action);
-    if (idx < 0)
+    if (!action || this->core().action(action->id()) != action)
         return;
-    auto id = QString::number(idx);
 
     action->set(key);
-    this->settings().beginGroup("Core");
-    this->settings().beginGroup("Action");
-    if (key.isNull())
-        this->settings().remove(id);
-    else
-        this->settings().setValue(id, key);
-    this->settings().endGroup();
-    this->settings().endGroup();
+    this->settings().setValue(Session::Core::BINDINGS_GROUP + "/" + action->id(), key.isNull() ? QString("") : key);
 
     emit action_changed(action, key);
+}
+
+bool Arbiter::android_auto_in_front()
+{
+    auto page = this->layout().openauto_page;
+    if (this->layout().curr_page != page || !page->projecting())
+        return false;
+    return Dialog::top(this->window_) == nullptr;
 }
 
 QMainWindow *Arbiter::window()

@@ -17,6 +17,9 @@ class Dialog : public QWidget {
     Q_OBJECT
 
    public:
+    // topmost open dialog that takes input (snack bars do not)
+    static Dialog *top(QWidget *window);
+
     Dialog(Arbiter &arbiter, bool fullscreen, QWidget *anchor = nullptr);
     void open(int timeout = 0);
 
@@ -28,12 +31,14 @@ class Dialog : public QWidget {
     Arbiter &arbiter;
 
     void showEvent(QShowEvent *event) override;
+    void hideEvent(QHideEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
     bool eventFilter(QObject *object, QEvent *event) override;
 
    private:
     QPointer<QWidget> anchor;
+    QPointer<QWidget> return_focus;
     QFrame *frame;
     QVBoxLayout *title;
     QVBoxLayout *body;
