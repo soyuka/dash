@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QIcon>
+#include <QScreen>
 #include <QRegularExpression>
 #include <QSettings>
 
@@ -47,6 +48,9 @@ int main(int argc, char *argv[])
         window.show();
     }
     else {
+        // Without a size of its own the window is shown at its size hint, and Qt
+        // Wayland applies that after the compositor's fullscreen configure.
+        window.resize(window.screen()->size());
         window.showFullScreen();
     }
 
